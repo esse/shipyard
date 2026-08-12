@@ -1,10 +1,9 @@
 # Shipyard
 
 A five-stage shipping pipeline for Claude Code. Fable — your main session —
-writes the plan, an
-adversarial reviewer tries to kill it, Codex agents implement every independent
-task in parallel git worktrees, and nothing merges until a second adversarial
-reviewer signs it off.
+writes the plan, an adversarial reviewer tries to kill it, Codex agents
+implement every independent task in parallel git worktrees, and nothing merges
+until a second adversarial reviewer signs it off.
 
 Two models, four roles, one rule: **reviewers hunt for reasons to reject, never
 to approve.**
