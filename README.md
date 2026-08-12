@@ -1,6 +1,7 @@
 # Shipyard
 
-A five-stage shipping pipeline for Claude Code. Claude writes the plan, an
+A five-stage shipping pipeline for Claude Code. Fable — your main session —
+writes the plan, an
 adversarial reviewer tries to kill it, Codex agents implement every independent
 task in parallel git worktrees, and nothing merges until a second adversarial
 reviewer signs it off.
@@ -38,7 +39,7 @@ Swap the model IDs in `agents/*.md` for whatever your Codex account has.
 
 ## The pipeline
 
-1. **Plan** — Claude writes the spec, split into small tasks, marking which are
+1. **Plan** — Fable writes the spec, split into small tasks, marking which are
    independent.
 2. **Plan review** — Sol attacks the plan on paper. Blockers get fixed before a
    line of code is written. Verdict: `EXECUTE AS-IS` / `EXECUTE WITH FIXES` /
@@ -49,11 +50,11 @@ Swap the model IDs in `agents/*.md` for whatever your Codex account has.
 4. **Task review** — Opus reviews each finished task against the plan step that
    spawned it. `FIX` goes back to Luna in the same worktree; `APPROVE` lets the
    branch merge. A task is done only when approved *and* merged.
-5. **Branch review** — Claude and Sol both review the integrated diff, in
+5. **Branch review** — Fable and Sol both review the integrated diff, in
    parallel, before the PR opens.
 
 The full stage-by-stage instructions live in
-`skills/shipping-plans-with-agents/SKILL.md`, which Claude loads on its own when
+`skills/shipping-plans-with-agents/SKILL.md`, which Fable loads on its own when
 a plan is ready to build. You can also just say "ship this with shipyard".
 
 ## Why cross-model
