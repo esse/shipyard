@@ -18,6 +18,8 @@ Five stages, in order. No skipping, no reordering.
 
 Sol and Opus are **adversarial**: they hunt for reasons to reject, never to approve.
 
+Fable is a role, not a model — it is whatever model this session runs on. If that is already Opus, stage 4 still dispatches the separate `opus-reviewer` subagent: same weights, but a fresh context that never saw the plan being written. Never review a task inline because "I am Opus already".
+
 Sol and Luna shell out to the Codex CLI. If `codex` is missing from PATH or unauthenticated they report the error and stop — that blocks stages 2 and 3; don't route around it by doing the work yourself.
 
 ## Stages

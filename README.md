@@ -36,6 +36,11 @@ names and duplicates are confusing.
 
 Swap the model IDs in `agents/*.md` for whatever your Codex account has.
 
+Fable is a role, not a model — it's whatever your session runs on. If that's
+already Opus, nothing changes: `opus-reviewer` is pinned to `model: opus` and
+still runs as a separate subagent, so stage 4 is reviewed by a context that
+never saw the plan being written.
+
 ## The pipeline
 
 1. **Plan** — Fable writes the spec, split into small tasks, marking which are
@@ -61,6 +66,10 @@ a plan is ready to build. You can also just say "ship this with shipyard".
 The plan author and the plan reviewer share no weights, no context, and no
 sunk cost. Sol and Opus each receive a self-contained prompt rather than the
 conversation, so they can't inherit the assumption that produced the bug.
+
+Sol gates both the plan and the branch, so those two stages stay cross-model
+whatever your session is. On an Opus session, stage 4 shares weights with the
+author — the isolated context is what's doing the work there.
 
 ## Adapting it
 
