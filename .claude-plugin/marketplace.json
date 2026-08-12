@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "shipyard",
+  "description": "A five-stage shipping pipeline for Claude Code: plan, adversarial plan review, parallel implementation in git worktrees, per-task review, branch review.",
+  "owner": {
+    "name": "Piotr Szmielew",
+    "url": "https://github.com/esse"
+  },
+  "plugins": [
+    {
+      "name": "shipyard",
+      "description": "Cross-model shipping pipeline: Claude plans, Codex reviews and implements, Opus gates each task before merge.",
+      "source": "./",
+      "category": "workflow"
+    }
+  ]
+}
