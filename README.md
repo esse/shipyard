@@ -1,12 +1,12 @@
 # Shipyard
 
-A five-stage shipping pipeline for Claude Code. Fable — your main session —
-writes the plan, an adversarial reviewer tries to kill it, Codex agents
-implement every independent task in parallel git worktrees, and nothing merges
-until a second adversarial reviewer signs it off.
+A five-stage shipping pipeline for Claude Code. Fable writes the plan, an
+adversarial reviewer tries to kill it, Codex agents implement every independent
+task in parallel git worktrees, and nothing merges until a second adversarial
+reviewer signs it off.
 
-Two models, four roles, one rule: **reviewers hunt for reasons to reject, never
-to approve.**
+Four models, five stages, one rule: **reviewers hunt for reasons to reject,
+never to approve.**
 
 ## Install
 
@@ -18,28 +18,30 @@ to approve.**
 ## Requires
 
 - The [Codex CLI](https://github.com/openai/codex) on `PATH` and authenticated
-  (`codex login`). Three of the four roles shell out to `codex exec`.
+  (`codex login`). Two of the four roles shell out to `codex exec`.
 - Git, for the worktree isolation used during implementation.
 
-If you already keep `codex.md`, `sol-reviewer.md`, or `opus-reviewer.md` in
-`~/.claude/agents/`, delete them after installing — the plugin ships the same
-names and duplicates are confusing.
+If you already keep `fable.md`, `codex.md`, `sol-reviewer.md`, or
+`opus-reviewer.md` in `~/.claude/agents/`, delete them after installing — the
+plugin ships the same names and duplicates are confusing.
 
 ## The cast
 
 | Name | Agent | Model | Access |
 | --- | --- | --- | --- |
-| Fable | main session | your session model | full |
+| Fable | `fable` | Claude Fable | read-only |
 | Sol | `sol-reviewer` | gpt-5.6-sol, xhigh reasoning | read-only |
 | Luna | `codex` | gpt-5.6-luna, max reasoning | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
 
-Swap the model IDs in `agents/*.md` for whatever your Codex account has.
+Every name is a model, pinned in that agent's frontmatter. **Your session model
+doesn't matter** — start on Opus, Sonnet or Haiku and the plan is still written
+by Fable and the branch still reviewed by Fable, because both are dispatches to
+the pinned `fable` agent. Your session orchestrates: it dispatches, merges,
+resolves conflicts, and talks to you.
 
-Fable is a role, not a model — it's whatever your session runs on. If that's
-already Opus, nothing changes: `opus-reviewer` is pinned to `model: opus` and
-still runs as a separate subagent, so stage 4 is reviewed by a context that
-never saw the plan being written.
+Swap the model IDs in `agents/*.md` for whatever your accounts have. If your
+build doesn't recognise the `fable` alias, use the full ID `claude-fable-5`.
 
 ## The pipeline
 
@@ -58,18 +60,18 @@ never saw the plan being written.
    parallel, before the PR opens.
 
 The full stage-by-stage instructions live in
-`skills/shipping-plans-with-agents/SKILL.md`, which Fable loads on its own when
-a plan is ready to build. You can also just say "ship this with shipyard".
+`skills/shipping-plans-with-agents/SKILL.md`, which your session loads on its
+own when a plan is ready to build. You can also just say "ship this with
+shipyard".
 
 ## Why cross-model
 
 The plan author and the plan reviewer share no weights, no context, and no
-sunk cost. Sol and Opus each receive a self-contained prompt rather than the
-conversation, so they can't inherit the assumption that produced the bug.
+sunk cost. Every role receives a self-contained prompt rather than the
+conversation, so none of them can inherit the assumption that produced the bug.
 
-Sol gates both the plan and the branch, so those two stages stay cross-model
-whatever your session is. On an Opus session, stage 4 shares weights with the
-author — the isolated context is what's doing the work there.
+Because the roles are pinned models rather than "whatever is running", that
+independence doesn't quietly disappear when you switch your session model.
 
 ## Adapting it
 

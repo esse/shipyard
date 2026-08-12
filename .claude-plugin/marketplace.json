@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "shipyard",
-      "description": "Cross-model shipping pipeline: Fable plans and reviews the branch, Codex reviews the plan and implements, Opus gates each task before merge.",
+      "description": "Cross-model shipping pipeline on four pinned models: Fable plans and reviews the branch, Codex reviews the plan and implements, Opus gates each task before merge.",
       "source": "./",
       "category": "workflow"
     }
