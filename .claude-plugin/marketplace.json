@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "shipyard",
-  "description": "A five-stage shipping pipeline for Claude Code: plan, adversarial plan review, parallel implementation in git worktrees, per-task review, branch review.",
+  "description": "A five-stage shipping pipeline for Claude Code: plan, adversarial plan review by Sol and Grok, parallel implementation in git worktrees by Luna and Grok, per-task review, and a three-model branch review.",
   "owner": {
     "name": "Piotr Szmielew",
     "url": "https://github.com/esse"
@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "shipyard",
-      "description": "Cross-model shipping pipeline on four pinned models: Fable plans and reviews the branch, Codex reviews the plan and implements, Opus gates each task before merge.",
+      "description": "Cross-model shipping pipeline on five pinned models: Fable plans, Sol and Grok attack the plan, Luna and Grok implement in parallel worktrees, Opus gates each task, and Fable, Sol and Grok all attack the branch before the PR.",
       "source": "./",
       "category": "workflow"
     }
