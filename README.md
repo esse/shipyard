@@ -25,6 +25,11 @@ from its own plan, and is told to distrust it.
   [Turning Grok off](#turning-grok-off).
 - Git, for the worktree isolation used during implementation.
 
+Run `/shipyard:doctor` to check both CLIs before you rely on them. It exercises
+the exact delegation form the wrappers use, and asserts that the read-only
+reviewer gates actually refuse a write — a green round-trip with a broken gate
+is the one failure that would otherwise look healthy.
+
 If you already keep any of `fable.md`, `codex.md`, `sol-reviewer.md`,
 `opus-reviewer.md`, `grok-implementer.md` or `grok-reviewer.md` in
 `~/.claude/agents/`, delete them after installing — the plugin ships the same
