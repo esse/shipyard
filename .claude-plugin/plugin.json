@@ -1,6 +1,6 @@
 {
   "name": "shipyard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Plan, adversarially review, implement in parallel worktrees, review again, ship. Bundles the fable, sol-reviewer, codex, opus-reviewer, grok-implementer and grok-reviewer subagents with the workflow skill that drives them.",
   "author": {
     "name": "Piotr Szmielew",
