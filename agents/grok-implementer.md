@@ -35,16 +35,22 @@ For every task you receive:
      --sandbox workspace --deny MCPTool
    ```
 
-4. Record what changed *before* committing — `git status --short` and
-   `git diff --stat` are both empty afterwards.
+4. Delete the prompt directory, and record what changed *before*
+   committing — `git status --short` and `git diff --stat` are both empty
+   afterwards.
 
 5. **Do not commit** if any of these hold — report and stop instead,
    including the step-4 output so the caller can see what state the
    worktree is in, and say that any partial changes are left uncommitted
-   there for inspection:
+   for inspection — noting that if the sandbox did not apply, writes may
+   also exist outside the worktree, where `git status` will not show them:
    - grok errored, timed out, or produced no answer (never substitute
      your own answer for grok's);
-   - grok warned that the sandbox could not be applied;
+   - the sandbox did not apply. Check both: a `warning: sandbox could not
+     be applied` line on stderr, and the last `ProfileApplied` event in
+     `~/.grok/sandbox-events.jsonl`, which carries `"enforced": true` when
+     the profile really took effect. Reading only grok's answer will miss
+     this.
    - step 4 showed no changes at all — a run that wrote nothing has
      nothing to commit, and an empty commit is not a result.
 
@@ -64,23 +70,24 @@ Rules:
 - Always `--prompt-file`. Never launch the interactive TUI. `--no-plan`
   matters: HARD tasks are exactly what makes grok want plan mode, and a
   headless run has nobody to approve the exit.
-- `--sandbox workspace` is what confines grok, and it was verified: a
-  write to an absolute path outside the working directory failed with
-  `Operation not permitted`. Be precise about the scope — the profile
-  allows writes to the working directory, `~/.grok/`, `/tmp`, `/var/tmp`
-  and the macOS temp dirs, and reads anywhere. What matters here is that
-  the repo outside your worktree, sibling worktrees, and the main `.git`
-  are all outside that set. `--always-approve` waves through tool
-  approvals, not the sandbox. `--deny MCPTool` is separate and also
+- `--sandbox workspace` is what confines grok. Be precise about the
+  scope — the profile allows writes to the working directory, `~/.grok/`,
+  `/tmp`, `/var/tmp` and the macOS temp dirs, and reads anywhere. What
+  matters here is that the repo outside your worktree, sibling worktrees,
+  and the main `.git` are all outside that set. `--always-approve` waves
+  through tool approvals, not the sandbox. `--deny MCPTool` is separate and also
   required: MCP servers are their own processes, so a write-capable MCP
   tool is not covered by the sandbox at all. Never drop either flag to
   "simplify" the command.
 - A built-in profile that fails to apply only *warns* and then runs
   unconfined, which you can detect but not prevent — hence the hard stop
-  in step 5. If a project wants that to be impossible rather than merely
-  caught, it can define a custom profile in `.grok/sandbox.toml` and use
-  it here instead: grok refuses to start when an explicitly requested
-  custom profile can't be applied.
+  in step 5. A project that wants prevention rather than detection can
+  define a custom profile in `.grok/sandbox.toml`, with a non-empty
+  `deny` list, and name it here instead: grok refuses to start rather
+  than expose denied paths when a custom profile is unknown, its
+  `sandbox.toml` is malformed, or (on Linux) `bubblewrap` is missing.
+  That is narrower than it sounds — it does not cover the kernel or
+  entitlement failures that make a built-in profile fail open.
 - If `grok` is not on PATH or authentication fails, report the exact
   error and stop. Do not install, update, or log in on your own.
 - One grok call per task by default; a single follow-up call is allowed

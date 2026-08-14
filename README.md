@@ -53,15 +53,16 @@ build doesn't recognise the `fable` alias, use the full ID `claude-fable-5`.
 
 ## The pipeline
 
-1. **Plan** — Fable turns the spec into a plan, split into small tasks, marking which are
-   independent and tagging each `ROUTINE` or `HARD`.
+1. **Plan** — Fable turns the spec into a plan, split into small tasks,
+   marking which are independent and tagging each `ROUTINE` or `HARD`.
 2. **Plan review** — Sol and Grok attack the plan on paper, in parallel.
    Blockers get fixed before a line of code is written. Verdict:
    `EXECUTE AS-IS` / `EXECUTE WITH FIXES` / `REWORK PLAN`.
 3. **Implement** — one agent per task, all dispatched at once, each in its own
-   git worktree so parallel file edits can't collide, and sandboxed to it.
-   `ROUTINE` tasks go to Luna, `HARD` ones to Grok. Each commits in its
-   worktree.
+   git worktree so parallel file edits can't collide, and sandboxed to it
+   (with one caveat — see [How the Grok roles are
+   confined](#how-the-grok-roles-are-confined)). `ROUTINE` tasks go to
+   Luna, `HARD` ones to Grok. Each commits in its worktree.
 4. **Task review** — Opus reviews each finished task against the plan step that
    spawned it. `FIX` goes back to the same implementer in the same worktree;
    `APPROVE` lets the branch merge. A task is done only when approved *and*
@@ -69,7 +70,7 @@ build doesn't recognise the `fable` alias, use the full ID `claude-fable-5`.
 5. **Branch review** — Fable, Sol and Grok all attack the integrated diff, in
    parallel. Verdict: `MERGE AS-IS` / `MERGE WITH FIXES` / `DO NOT MERGE`. Fixes
    send the branch back through this stage; the PR opens only once every
-   reviewer returns `MERGE AS-IS` on the diff as it then stands.
+   enabled reviewer returns `MERGE AS-IS` on the diff as it then stands.
 
 The full stage-by-stage instructions live in
 `skills/shipping-plans-with-agents/SKILL.md`, which your session loads on its
@@ -108,11 +109,15 @@ Every flag in the two grok commands is load-bearing, so don't trim them:
   writes the main checkout's `.git` — so the wrapper agent runs the commit.
   Both roles also pass `--deny MCPTool`, because MCP servers run as separate
   processes that no sandbox profile covers.
-- **If you want the sandbox to be fail-closed**, define a custom profile in
-  `.grok/sandbox.toml` and swap it into the command. A built-in profile that
-  can't be applied only warns and then runs unconfined — the wrapper is told to
-  treat that warning as an error, but a custom profile is stronger: grok
-  refuses to start at all when an explicitly requested one won't apply.
+- **A built-in profile that can't be applied only warns, then runs
+  unconfined.** The wrappers are told to detect that — on stderr and via the
+  `ProfileApplied` event in `~/.grok/sandbox-events.jsonl` — and refuse to
+  commit, but detection happens after the run. For prevention instead, define a
+  custom profile with a non-empty `deny` list in `.grok/sandbox.toml` and name
+  it in the command: grok refuses to start rather than expose denied paths when
+  a custom profile is unknown, its `sandbox.toml` is malformed, or (on Linux)
+  `bubblewrap` is missing. That does not extend to the kernel and entitlement
+  failures that make a built-in profile fail open.
 
 ## Why cross-model
 
