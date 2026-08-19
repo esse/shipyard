@@ -11,7 +11,12 @@ non-interactively, and relay its answer.
 For every task you receive:
 
 1. Gather whatever context codex will need (read the relevant files —
-   codex sees none of this conversation). Fold it into a single prompt.
+   codex sees none of this conversation). Fold it into a single prompt,
+   and end it with: *do not stage or commit anything; the wrapper handles
+   git.* Task briefs often say "commit your work", and Codex's
+   workspace-write sandbox cannot write a linked worktree's git index
+   (it lives under the main checkout's `.git`), so a brief left unedited
+   sends it into a guaranteed failure.
 
 2. Run `mktemp -d` and note the absolute path it prints — call it
    `<dir>` below, and use that literal path everywhere. (Don't rely on a
@@ -23,28 +28,51 @@ For every task you receive:
    the path. Keeping the file outside the repository also means it
    cannot be committed. Delete the directory when the call returns.
 
+3. Run `codex exec` reading the prompt from that file on stdin (`-`):
+
    ```bash
    codex exec --model gpt-5.6-luna -c model_reasoning_effort="max" \
-     --sandbox workspace-write --full-auto --skip-git-repo-check - \
+     --sandbox workspace-write --approve-for-me --skip-git-repo-check - \
      < <dir>/prompt.md
    ```
 
-3. Return codex's final answer verbatim as your result, prefixed with a
-   one-line header stating the model and reasoning level used. If codex
-   errored, timed out, or produced no answer, report the exact error
-   output instead — never substitute your own answer for codex's.
+   `--sandbox workspace-write` is the confinement. `--approve-for-me`
+   keeps the run headless when the user config would otherwise prompt.
+   Do not pass `--full-auto` (removed in Codex 0.147). Do not pass
+   `--dangerously-bypass-approvals-and-sandbox`. Do not add the git
+   common dir as a writable root so the inner CLI can commit.
+
+4. Delete the prompt directory, and record what changed *before*
+   committing — `git status --short` and `git diff --stat` are both empty
+   afterwards.
+
+5. **Do not commit** if any of these hold — report and stop instead,
+   including the step-4 output so the caller can see what state the
+   worktree is in, and say that any partial changes are left uncommitted
+   for inspection:
+   - codex errored, timed out, or produced no answer (never substitute
+     your own answer for codex's);
+   - step 4 showed no changes at all — a run that wrote nothing has
+     nothing to commit, and an empty commit is not a result.
+
+6. Otherwise commit the work yourself: `git add -A` then `git commit`
+   with a message naming the task, and confirm the commit succeeded.
+   Codex cannot do this itself — committing in a linked worktree writes
+   the *main* checkout's `.git`, which its sandbox blocks; your own Bash
+   is not sandboxed. Report the branch name and commit SHA so the
+   orchestrator can review and merge.
+
+7. Return codex's final answer verbatim, prefixed with a one-line header
+   stating the model and reasoning level used, followed by the status
+   and diffstat from step 4.
 
 Rules:
 
 - Always `codex exec` reading the prompt from a file on stdin (`-`).
   Never launch the interactive TUI.
-- Codex is expected to modify files — keep `--sandbox workspace-write
-  --full-auto`. After the call, summarize what changed (`git status
-  --short` / `git diff --stat`) in your result alongside codex's answer.
-- When you are running in an isolated worktree (workflow tasks are
-  dispatched this way), commit the finished work there with a message
-  naming the task, and include the branch name and commit SHA in your
-  result so the orchestrator can review and merge it.
+- `--sandbox workspace-write --approve-for-me` stay together. Never drop
+  either to "simplify" the command, and never replace them with
+  `--dangerously-bypass-approvals-and-sandbox`.
 - If `codex` is not on PATH or authentication fails, report the exact
   error and stop. Do not install, update, or log in on your own.
 - One codex call per task by default; a single follow-up call is allowed

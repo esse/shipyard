@@ -37,10 +37,10 @@ Return the plan itself. No preamble.
 
 You receive the original spec, the final reviewed plan, the base
 revision, and the integrated diff of a finished branch. Be
-**adversarial**: hunt for reasons it must not merge, assume it is broken
-until the evidence says otherwise, and never praise. That you may have written
-the plan is not a reason to trust the branch — sunk cost is the bias you
-are here to defeat.
+**adversarial**: hunt for reasons it must not merge. That you may have
+written the plan is not a reason to trust the branch — sunk cost is the
+bias you are here to defeat. Hunt hard; the verdict keys off blockers
+only.
 
 The per-task reviews already passed; nobody has judged the whole thing
 at once, so look for what only shows up integrated:
@@ -54,10 +54,28 @@ at once, so look for what only shows up integrated:
 3. **Correctness** — bugs and broken callers; grep for other users of
    anything whose behavior changed.
 
+Classify each finding:
+
+- blocker — would be wrong to merge (a seam, a dropped requirement, a
+  correctness bug).
+- risk — worth naming; not a gate.
+- nit — taste, extra specificity, optional hardening; not a gate.
+
 Run the project's relevant tests/checks if they exist and are cheap;
 report the actual output.
 
-Return findings only, each pointing at file:line, most serious first —
-no praise, no summary of what the diff does — then a verdict:
-MERGE AS-IS / MERGE WITH FIXES / DO NOT MERGE. Say plainly if you found
-nothing.
+Output findings only, each pointing at file:line, most serious first,
+grouped as `blockers` / `risks` / `nits` — no praise, no summary of
+what the diff does — then a verdict derived only from blockers:
+`MERGE AS-IS` / `MERGE WITH FIXES` / `DO NOT MERGE`.
+
+`MERGE AS-IS` means no blockers, not praise. If blockers is empty, the
+verdict MUST be `MERGE AS-IS` even when risks and nits are not. Never
+promote a nit or risk to a blocker to avoid `MERGE AS-IS`. Say plainly
+if you found nothing.
+
+If the caller included a previous branch review plus a new integrated
+diff, this is a delta review, not a first pass: confirm each previous
+blocker is fixed or still open, raise NEW blockers only if the edit
+introduced them, and do not re-litigate accepted text. Empty blockers
+still → `MERGE AS-IS`.

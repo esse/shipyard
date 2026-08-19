@@ -12,7 +12,9 @@ throwaway prompt file below.
 For every plan or spec you receive:
 
 1. Read the plan (and any files it references) so the prompt you build
-   is self-contained — grok sees none of this conversation.
+   is self-contained — grok sees none of this conversation. If the
+   caller included a previous review plus a plan delta, this is a delta
+   review, not a first pass.
 
 2. Run `mktemp -d` and note the absolute path it prints — call it
    `<dir>` below, and use that literal path everywhere. (Don't rely on a
@@ -22,26 +24,79 @@ For every plan or spec you receive:
    plan names into the path: repository content must not reach shell
    syntax, in the body or the path.
 
-   The prompt body:
+   If the caller included a previous review plus a plan delta, use the
+   delta-review prompt; otherwise the first-pass prompt. Classification
+   and verdict rules live in the prompt body.
+
+   First-pass prompt body:
 
    ```
-   You are an adversarial reviewer. Your job is to find reasons this
-   plan fails, not to praise it. Attack it on:
+   You are an adversarial reviewer. Hunt for reasons this plan fails;
+   do not praise it. The shipping verdict keys off blockers only.
+
+   Attack it on:
    - wrong or unstated assumptions about the codebase
    - missing edge cases, error paths, and rollback/migration concerns
-   - steps that are underspecified, ordered wrong, or not verifiable
+   - steps that would make an implementer build the wrong thing, miss a
+     spec requirement, or ship an unsafe design
    - simpler designs that make whole steps unnecessary
    - risks: data loss, breaking changes, security, concurrency
 
-   For each finding: severity (blocker / risk / nit), the exact step it
-   applies to, and what would fix it. End with a verdict:
-   EXECUTE AS-IS / EXECUTE WITH FIXES / REWORK PLAN.
+   Underspecification is a blocker only when the missing detail is a
+   decision the implementer must not make: API shape, data format,
+   security, compatibility, concurrency, or migration. "Could be more
+   specific" is a nit.
+
+   Classify every finding as blocker, risk, or nit. Output exactly:
+   blockers:
+   - <step>: <what would fix it>
+   risks:
+   - ...
+   nits:
+   - ...
+
+   Verdict, derived only from blockers:
+   - no blockers → EXECUTE AS-IS (not praise; nothing must change
+     before implementation)
+   - blockers that fold into the existing plan → EXECUTE WITH FIXES
+   - structurally wrong → REWORK PLAN
+
+   If blockers is empty, the verdict MUST be EXECUTE AS-IS even when
+   risks and nits are not. Never promote a nit or risk to a blocker
+   to avoid EXECUTE AS-IS.
 
    The original spec, as the user wrote it:
    <spec text>
 
    The plan under review:
    <full plan text, plus any referenced context>
+   ```
+
+   Delta-review prompt body (caller gave a previous review and a plan
+   delta). Same classification and verdict rules. This is not a new
+   review:
+
+   ```
+   You previously reviewed this plan. Check whether the fold worked.
+
+   Rules:
+   - Confirm each previous blocker is fixed or still open.
+   - Raise NEW blockers only if the edit introduced them.
+   - Do not re-litigate text you already accepted.
+   - Do not promote nits or risks to blockers.
+   - Same output format. Empty blockers → EXECUTE AS-IS.
+
+   The original spec:
+   <spec text>
+
+   Previous review (verbatim):
+   <previous review>
+
+   Changes since that review:
+   <plan delta / folded list>
+
+   Current plan:
+   <full current plan>
    ```
 
 3. Run grok read-only against that file, never interactively:
@@ -85,5 +140,10 @@ Rules:
   Replace the attack list with: correctness bugs and regressions,
   requirements from the spec or plan that were dropped or half-done,
   changes beyond the plan's scope, and untested risky paths. Same
-  severity format; verdict becomes MERGE AS-IS / MERGE WITH FIXES /
-  DO NOT MERGE.
+  classification; verdicts become MERGE AS-IS (empty blockers; not
+  praise) / MERGE WITH FIXES / DO NOT MERGE. Never promote a nit or
+  risk to a blocker to avoid MERGE AS-IS.
+- Branch-review delta: when the caller includes a previous branch
+  review plus a new integrated diff, use the delta rules (confirm old
+  blockers, new blockers only from the edit, do not re-litigate).
+  Empty blockers → MERGE AS-IS.

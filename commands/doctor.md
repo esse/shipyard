@@ -16,21 +16,53 @@ Do the work in a throwaway directory so nothing touches the user's tree:
 1. **On PATH** — `command -v codex`.
 2. **Authenticated** — `codex login status`. Anything other than a logged-in
    line is a failure; do not attempt to log in.
-3. **Delegation round-trip**, exercising the exact invocation form the wrappers
-   use — prompt on stdin, write-enabled, in the temp dir:
+3. **Flags the wrappers pass actually exist** — `codex exec --help`. Pass only
+   if the output lists both `--sandbox` and `--approve-for-me`. Fail if
+   `--approve-for-me` is missing (Codex older than 0.147, or a flag rename):
+   Luna's command will error on startup. Do not pass `--full-auto`; it was
+   removed in 0.147 and is not in the wrappers.
+4. **Delegation round-trip in a linked worktree**, Luna's exact invocation,
+   then a **host** commit — the path the wrapper uses, because
+   `workspace-write` cannot write a linked worktree's git index:
 
    ```bash
-   d=$(mktemp -d) && printf 'Create ok.txt containing OK here, then reply with just: DONE\n' > "$d/p.md" \
-     && cd "$d" && codex exec --model gpt-5.6-luna -c model_reasoning_effort="low" \
-       --sandbox workspace-write --full-auto --skip-git-repo-check - < "$d/p.md" \
-     ; echo "exit=$?"; cat "$d/ok.txt" 2>&1; rm -rf "$d"
+   d=$(mktemp -d)
+   repo="$d/repo"
+   wt="$d/wt"
+   git init "$repo"
+   git -C "$repo" config user.email "shipyard-doctor@localhost"
+   git -C "$repo" config user.name "shipyard-doctor"
+   printf 'seed\n' > "$repo/README"
+   git -C "$repo" add README
+   git -C "$repo" -c commit.gpgsign=false commit -m seed
+   git -C "$repo" worktree add "$wt" -b shipyard-doctor
+   printf 'Create ok.txt containing OK here, then reply with just: DONE\n' > "$d/p.md"
+   ( cd "$wt" && codex exec --model gpt-5.6-luna -c model_reasoning_effort="low" \
+       --sandbox workspace-write --approve-for-me --skip-git-repo-check - < "$d/p.md" )
+   echo "codex_exit=$?"
+   cat "$wt/ok.txt" 2>&1
+   git -C "$wt" add ok.txt
+   git -C "$wt" -c commit.gpgsign=false commit -m 'shipyard-doctor host commit'
+   echo "commit_exit=$?"
+   git -C "$wt" log -1 --oneline
+   git -C "$repo" worktree remove --force "$wt"
+   rm -rf "$d"
    ```
 
-   Pass only if it replies `DONE` *and* `ok.txt` contains `OK`. A reply without
-   the file means the sandbox flags aren't working; a file without a reply means
-   the relay is broken.
-4. **Read-only profile accepted** — same command with `--sandbox read-only` and
-   a trivial prompt returns an answer.
+   Pass only if Codex replies `DONE`, `ok.txt` contains `OK`, *and* the host
+   commit succeeded. A reply without the file means the sandbox flags aren't
+   working; a file without a reply means the relay is broken; a file whose
+   host commit failed means the wrapper cannot land Luna's work in a linked
+   worktree.
+5. **Read-only profile accepted** — Sol's form, a trivial prompt returns an
+   answer:
+
+   ```bash
+   d=$(mktemp -d) && printf 'Reply with just: DONE\n' > "$d/p.md" \
+     && cd "$d" && codex exec --model gpt-5.6-sol -c model_reasoning_effort="low" \
+       --sandbox read-only --skip-git-repo-check - < "$d/p.md" \
+     ; echo "exit=$?"; rm -rf "$d"
+   ```
 
 ## Grok (grok-implementer, grok-reviewer)
 
