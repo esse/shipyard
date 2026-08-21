@@ -36,6 +36,8 @@ None of them sees this conversation. Every dispatch prompt must be self-containe
 
 **Key off the blocker list, not the verdict word.** Reviewers classify findings as blocker / risk / nit. If `blockers` is empty, that review has passed — even if the model wrote `EXECUTE WITH FIXES`, `MERGE WITH FIXES`, or `FIX` above only nits and risks. Say so when you override a mislabeled verdict. Do not auto-convert `REWORK PLAN` or `DO NOT MERGE`; those stop the pipeline even when the list is messy. Grok has no verdict line to override, and no way to say `REWORK PLAN` — a structural objection from it arrives as a blocker, which gates the same way.
 
+**Verify a citation before you act on it.** Every finding is supposed to cite `file:line`. Before you fold a blocker, confirm the file is there and the line says what the finding claims — one `sed -n` settles it. **A finding whose citation points at a file that does not exist is a hallucination: discard it on the spot, say so once, and do not fold it, do not ask the user about it, and do not count it toward the gate.** Two things look like this and are not, so check them first: a path the plan itself creates, which of course does not exist yet at plan-review time, and a path that moved in a commit the reviewer never saw. If the defect turns out to be real under a corrected path, keep the finding and fix the path. One hallucinated citation does not disqualify the rest of that review — check its other findings the same way instead of throwing the whole thing out.
+
 ## Stages
 
 **1. Plan — Fable.** `Agent(subagent_type: "fable")` with the spec or brief and everything the user said about it. Fable returns the plan, broken into small tasks, with the independent ones marked and each tagged `ROUTINE` or `HARD`. You own it from there: read it, and send it back if it missed the ask or left tasks untagged.
@@ -82,6 +84,7 @@ This stage gates the branch's *final* state, so a verdict dies the moment the di
 - Sequential implementer dispatches for independent tasks → wasted wall-clock; one message, many calls.
 - A dispatch prompt that says "as discussed above" → no subagent has an above.
 - A brief that pastes file bodies a CLI wrapper could read itself → paths and `file:line` anchors instead; you are billed for every quote, twice.
+- Folding a blocker whose `file:line` you never opened → the citation is the finding; one that points nowhere is a hallucination, not a gate.
 - Waiting on a CLI wrapper by tailing its log → one blocking wait on an end marker; progress checks are a full context round-trip each.
 - Opening the PR without the stage-5 branch review → the per-task reviews never saw the integrated diff.
 - Opening the PR on a diff that changed after the last stage-5 pass → the verdict you are citing was about a different branch.
