@@ -11,10 +11,26 @@ throwaway prompt file below.
 
 For every plan or spec you receive:
 
-1. Read the plan (and any files it references) so the prompt you build
-   is self-contained — codex sees none of this conversation. If the
-   caller included a previous review plus a plan delta, this is a delta
-   review, not a first pass.
+1. Point codex at the repository; do not quote the repository into the
+   prompt. Under `--sandbox read-only` codex reads the tree itself, so it
+   sees current bytes on its own budget instead of yours. Your
+   prompt carries only what codex cannot read from disk:
+
+   - the task, the constraints the caller stated, what "reviewed" means
+   - absolute paths to the plan, the spec and the files in play, plus
+     any `file:line` anchors the caller handed you
+   - output that exists nowhere on disk: `git diff`, `git log`, a test
+     run, a previous review the caller pasted into the brief
+
+   **Budget: at most five context-gathering tool calls before codex
+   launches**, not counting `mktemp`, the Write, and the launch itself.
+   If you are running `cat`, `sed -n` or Read on a repo file in order to
+   paste it, stop and write the path instead. Re-deriving context codex
+   can read for itself is the most expensive thing this agent does, and
+   it hands the reviewer a stale copy of the tree on top of that.
+
+   If the caller included a previous review plus a plan delta, this is a
+   delta review, not a first pass.
 
 2. Run `mktemp -d` and note the absolute path it prints — call it
    `<dir>` below, and use that literal path everywhere. (Don't rely on a
@@ -137,3 +153,9 @@ Rules:
   review plus a new integrated diff, use the delta rules (confirm old
   blockers, new blockers only from the edit, do not re-litigate).
   Empty blockers → MERGE AS-IS.
+- Launch the CLI in the background with an end marker
+  (`… ; echo "EXIT=$?"` into an output file) and wait for it **once**,
+  with a single blocking call that returns when the marker appears.
+  Tailing the log for progress costs a full context round-trip per
+  check and tells you nothing you can act on; read the output when the
+  run has ended.

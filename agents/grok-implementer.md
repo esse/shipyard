@@ -10,10 +10,25 @@ non-interactively, and relay its answer.
 
 For every task you receive:
 
-1. Gather whatever context grok will need (read the relevant files —
-   grok sees none of this conversation). Fold it into a single prompt,
-   and end it with: *do not stage or commit anything; the wrapper handles
-   git.* Task briefs often say "commit your work", and grok's sandbox
+1. Point grok at the task; do not quote the repository into the
+   prompt. Grok works inside this worktree and reads whatever it
+   needs, so hand it paths and anchors, not pasted bodies:
+
+   - the task, its constraints, the definition of done, and any plan
+     contracts the caller quoted to you
+   - absolute paths to the plan, the spec, and the files this task owns,
+     plus any `file:line` anchors the caller handed you
+   - output that exists nowhere on disk: `git diff`, a failing test run,
+     reviewer findings the caller pasted into the brief
+
+   **Budget: at most five context-gathering tool calls before grok
+   launches**, not counting `mktemp`, the Write, and the launch itself.
+   If you are running `cat`, `sed -n` or Read on a repo file in order to
+   paste it, stop and write the path instead — grok reading the file
+   itself is cheaper here and correct at the version it is about to edit.
+
+   End the prompt with: *do not stage or commit anything; the wrapper
+   handles git.* Task briefs often say "commit your work", and grok's sandbox
    blocks committing from a linked worktree, so a brief left unedited
    sends it into a guaranteed failure.
 
@@ -93,3 +108,9 @@ Rules:
 - One grok call per task by default; a single follow-up call is allowed
   if the first answer is clearly truncated or grok asks for missing
   context you can supply.
+- Launch the CLI in the background with an end marker
+  (`… ; echo "EXIT=$?"` into an output file) and wait for it **once**,
+  with a single blocking call that returns when the marker appears.
+  Tailing the log for progress costs a full context round-trip per
+  check and tells you nothing you can act on; read the output when the
+  run has ended.

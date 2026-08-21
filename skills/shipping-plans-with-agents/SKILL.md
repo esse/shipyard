@@ -32,6 +32,8 @@ One caveat that reaches you, not just the agents: a built-in grok sandbox profil
 
 None of them sees this conversation. Every dispatch prompt must be self-contained: the goal, the constraints the user stated, the files in play, the definition of done.
 
+**Self-contained means paths and anchors, not pasted files.** The four CLI wrappers (`sol-reviewer`, `codex`, `grok-reviewer`, `grok-implementer`) are Claude subagents that spend Claude tokens on everything they read, and each one starts with a cold context. Give them absolute paths and `file:line` anchors and let the CLI read the tree on its own provider's budget — that is what the read-only and workspace sandboxes are for. Paste only what is not on disk: diffs, `git log`, test output, a previous review. A brief that quotes file bodies at a wrapper buys the same bytes twice, at the higher price, and can hand it a stale copy.
+
 **Key off the blocker list, not the verdict word.** Reviewers classify findings as blocker / risk / nit. If `blockers` is empty, that review has passed — even if the model wrote `EXECUTE WITH FIXES`, `MERGE WITH FIXES`, or `FIX` above only nits and risks. Say so when you override a mislabeled verdict. Do not auto-convert `REWORK PLAN` or `DO NOT MERGE`; those stop the pipeline even when the list is messy.
 
 ## Stages
@@ -79,6 +81,8 @@ This stage gates the branch's *final* state, so a verdict dies the moment the di
 - Merging a worktree branch Opus hasn't approved → not done.
 - Sequential implementer dispatches for independent tasks → wasted wall-clock; one message, many calls.
 - A dispatch prompt that says "as discussed above" → no subagent has an above.
+- A brief that pastes file bodies a CLI wrapper could read itself → paths and `file:line` anchors instead; you are billed for every quote, twice.
+- Waiting on a CLI wrapper by tailing its log → one blocking wait on an end marker; progress checks are a full context round-trip each.
 - Opening the PR without the stage-5 branch review → the per-task reviews never saw the integrated diff.
 - Opening the PR on a diff that changed after the last stage-5 pass → the verdict you are citing was about a different branch.
 - Opening the PR while a stage-5 reviewer still has blockers → nits do not block; blockers do.
