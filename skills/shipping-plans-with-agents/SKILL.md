@@ -18,7 +18,7 @@ Five stages, in order. No skipping, no reordering.
 | Grok | `grok-implementer` | grok-4.6, xhigh | write |
 | Grok | `grok-reviewer` | grok-4.6, xhigh | read-only |
 
-Every review in this pipeline is **adversarial** — Sol, Opus, Grok, and Fable on the branch diff all hunt for reasons to reject. The gate is blockers, not an empty findings list. `EXECUTE AS-IS` / `MERGE AS-IS` / `APPROVE` mean no blockers, not praise. Fable wrote the plan and reviews the branch anyway; the fresh dispatch is what keeps that honest.
+Every review in this pipeline is **adversarial** — Sol, Opus, Grok, and Fable on the branch diff all hunt for reasons to reject. The gate is blockers, not an empty findings list. `EXECUTE AS-IS` / `MERGE AS-IS` / `APPROVE` mean no blockers, not praise. `grok-reviewer` returns no verdict word at all — its blocker list *is* its verdict, because its verdicts ran lenient while its findings ran sharp. Fable wrote the plan and reviews the branch anyway; the fresh dispatch is what keeps that honest.
 
 **Grok is optional, and the env var is the only switch.** Before stage 2, run `printenv SHIPYARD_NO_GROK`. Any non-empty value (use `1`) turns Grok off for this project, which changes exactly three dispatch sites: stage 2 drops `grok-reviewer`, stage 3 routes HARD tasks to `codex` along with the routine ones, stage 5 drops `grok-reviewer`. Say once, in stage 2, that Grok is disabled; every gate stays as it is. With the var unset, a missing or unauthenticated `grok` is a hard stop exactly like a missing `codex` — report it and wait, don't decide for yourself to run without Grok.
 
@@ -34,7 +34,7 @@ None of them sees this conversation. Every dispatch prompt must be self-containe
 
 **Self-contained means paths and anchors, not pasted files.** The four CLI wrappers (`sol-reviewer`, `codex`, `grok-reviewer`, `grok-implementer`) are Claude subagents that spend Claude tokens on everything they read, and each one starts with a cold context. Give them absolute paths and `file:line` anchors and let the CLI read the tree on its own provider's budget — that is what the read-only and workspace sandboxes are for. Paste only what is not on disk: diffs, `git log`, test output, a previous review. A brief that quotes file bodies at a wrapper buys the same bytes twice, at the higher price, and can hand it a stale copy.
 
-**Key off the blocker list, not the verdict word.** Reviewers classify findings as blocker / risk / nit. If `blockers` is empty, that review has passed — even if the model wrote `EXECUTE WITH FIXES`, `MERGE WITH FIXES`, or `FIX` above only nits and risks. Say so when you override a mislabeled verdict. Do not auto-convert `REWORK PLAN` or `DO NOT MERGE`; those stop the pipeline even when the list is messy.
+**Key off the blocker list, not the verdict word.** Reviewers classify findings as blocker / risk / nit. If `blockers` is empty, that review has passed — even if the model wrote `EXECUTE WITH FIXES`, `MERGE WITH FIXES`, or `FIX` above only nits and risks. Say so when you override a mislabeled verdict. Do not auto-convert `REWORK PLAN` or `DO NOT MERGE`; those stop the pipeline even when the list is messy. Grok has no verdict line to override, and no way to say `REWORK PLAN` — a structural objection from it arrives as a blocker, which gates the same way.
 
 ## Stages
 
