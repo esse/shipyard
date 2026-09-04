@@ -184,9 +184,26 @@ Rules:
 - Branch-review delta: when the caller includes a previous branch
   review plus a new integrated diff, use the delta rules (confirm old
   blockers, new blockers only from the edit, do not re-litigate).
-- Launch the CLI in the background with an end marker
-  (`… ; echo "EXIT=$?"` into an output file) and wait for it **once**,
-  with a single blocking call that returns when the marker appears.
-  Tailing the log for progress costs a full context round-trip per
-  check and tells you nothing you can act on; read the output when the
-  run has ended.
+- **Run the CLI in the foreground**, with the Bash tool's own `timeout` set
+  to its maximum (`600000` ms), and pass the working directory using
+  `grok`'s `--cwd` flag rather than `cd <path> && grok`. A compound `cd`
+  can trip the permission classifier, and when it does the bare command
+  silently runs in the session's own directory — which on a worktree task
+  means writing to the wrong checkout.
+- **Never end your turn while the CLI is still running.** A subagent turn
+  that ends is finished: nothing collects the output, and the orchestrator
+  receives your "I will wait for it" message *as the result*. This is the
+  single most common way this wrapper fails, and it wastes the whole run.
+- Runs longer than the foreground budget get backgrounded by the harness,
+  which hands you a PID. You cannot busy-wait for it — foreground `sleep`
+  is blocked — so do exactly one of these, and say which you did:
+  - keep blocking **in the same turn** with further bounded foreground
+    waits on that PID until it exits; or
+  - hand off explicitly: report the **PID**, the **output file path**, the
+    worktree, and precisely what still needs verifying and committing, so
+    the orchestrator can wait on it and resume you.
+  A bare "it is running in the background, I will wait for the
+  notification" is not a handoff — it is the failure above.
+- Do not tail the log for progress. Each check is a full context
+  round-trip and tells you nothing you can act on; read the output once
+  the run has ended.

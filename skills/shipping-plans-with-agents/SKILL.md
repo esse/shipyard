@@ -85,7 +85,7 @@ This stage gates the branch's *final* state, so a verdict dies the moment the di
 - A dispatch prompt that says "as discussed above" → no subagent has an above.
 - A brief that pastes file bodies a CLI wrapper could read itself → paths and `file:line` anchors instead; you are billed for every quote, twice.
 - Folding a blocker whose `file:line` you never opened → the citation is the finding; one that points nowhere is a hallucination, not a gate.
-- Waiting on a CLI wrapper by tailing its log → one blocking wait on an end marker; progress checks are a full context round-trip each.
+- A wrapper whose result is "the CLI is running in the background, I will wait" → its turn already ended and nothing collected the run. Do not re-dispatch it: find the PID, arm a waiter that *exits* (`Bash` with `run_in_background` and `until ! kill -0 <PID> 2>/dev/null; do sleep 10; done`), and `SendMessage` the same agent to collect and commit when it fires.
 - Opening the PR without the stage-5 branch review → the per-task reviews never saw the integrated diff.
 - Opening the PR on a diff that changed after the last stage-5 pass → the verdict you are citing was about a different branch.
 - Opening the PR while a stage-5 reviewer still has blockers → nits do not block; blockers do.
