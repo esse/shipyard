@@ -56,7 +56,9 @@ Cap at two rounds (one full, one delta). After round 2:
 
 **Implementation starts when every enabled reviewer has an empty blocker list on the current plan, or when round 2 closed with only nits and risks remaining** (with `SHIPYARD_NO_GROK` set, that set is Sol alone). Nothing else opens the gate. Where reviewers contradict each other on a non-blocking finding, say which you took and why.
 
-**3. Implement — Luna and Grok.** One agent per task, all dispatched in a single message so they run in parallel, each with `isolation: "worktree"` so file overlap is safe. Route by the plan's tag: `ROUTINE` → `codex`, `HARD` → `grok-implementer`. Include residual stage-2 nits and risks in each brief as non-blocking notes. Each wrapper commits in its own worktree; the inner CLI does not.
+**3. Implement — Luna and Grok.** **Create each worktree yourself, before dispatching**, and pass its absolute path in the brief: `git worktree add <root>/<repo>-<task-slug> -b <branch>`. Then dispatch one agent per task, all in a single message so they run in parallel.
+
+Do **not** use `isolation: "worktree"`. It picks its own path, and you need the path in advance for three things: a project's own convention for where worktrees live, seeding the tree so the agent can build (dependencies, build artifacts, submodule sources — a bare worktree usually cannot compile or run tests), and `grok-implementer`'s `--sandbox workspace`, whose confinement root *is* that path. Verify the tree compiles before you dispatch; an agent that cannot run the suite will report a gate it never ran. Route by the plan's tag: `ROUTINE` → `codex`, `HARD` → `grok-implementer`. Include residual stage-2 nits and risks in each brief as non-blocking notes. Each wrapper commits in its own worktree; the inner CLI does not.
 
 **4. Task review — Opus.** As each task finishes, `Agent(subagent_type: "opus-reviewer")` on that worktree's commit plus the plan step it implements. `FIX` (non-empty blockers) → back to the *same* implementer agent (`codex` or `grok-implementer`) in the *same* worktree, then re-review. `APPROVE` (empty blockers, nits allowed) → merge that worktree branch into the working branch (you resolve conflicts).
 
@@ -66,7 +68,7 @@ A task is done only when approved **and** merged.
 
 This stage gates the branch's *final* state, so a verdict dies the moment the diff changes. Do not round-cap stage 5. The repair loop, when any reviewer reports a blocker you accept:
 
-1. Tag the repair brief and dispatch it to `codex` (`ROUTINE`) or `grok-implementer` (`HARD`) in a fresh worktree, where it commits. Same rule as stage 1: `ROUTINE` only if the change is fully prescribed, follows a pattern already in the codebase, and leaves no open decision about API shape, data format, security, compatibility, concurrency or migration; otherwise `HARD`.
+1. Tag the repair brief and dispatch it to `codex` (`ROUTINE`) or `grok-implementer` (`HARD`) in a fresh worktree **you create and seed first**, as in stage 3, where it commits. Same rule as stage 1: `ROUTINE` only if the change is fully prescribed, follows a pattern already in the codebase, and leaves no open decision about API shape, data format, security, compatibility, concurrency or migration; otherwise `HARD`.
 2. `opus-reviewer` on that commit, with the findings as the step it implements. FIX goes back to the same agent; APPROVE lets you merge it into the branch.
 3. Regenerate the integrated diff and **re-dispatch every enabled reviewer as a delta**, not only the ones who complained: previous review, new diff, what was fixed. Not a first-pass re-read of accepted text.
 
@@ -82,6 +84,7 @@ This stage gates the branch's *final* state, so a verdict dies the moment the di
 - Deciding for yourself that Grok is "not needed" → `SHIPYARD_NO_GROK` is the user's switch, not your call.
 - Merging a worktree branch Opus hasn't approved → not done.
 - Sequential implementer dispatches for independent tasks → wasted wall-clock; one message, many calls.
+- Dispatching an implementer with `isolation: "worktree"` instead of a path you created → the harness picks the location, so you cannot seed it, cannot honour a project's worktree convention, and cannot know what `--sandbox workspace` is actually confining.
 - A dispatch prompt that says "as discussed above" → no subagent has an above.
 - A brief that pastes file bodies a CLI wrapper could read itself → paths and `file:line` anchors instead; you are billed for every quote, twice.
 - Folding a blocker whose `file:line` you never opened → the citation is the finding; one that points nowhere is a hallucination, not a gate.
