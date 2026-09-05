@@ -1,6 +1,6 @@
 ---
 name: grok-reviewer
-description: Adversarial review of a plan (stage 2, alongside Sol) or of the integrated branch diff (stage 5, alongside Fable and Sol), via the Grok CLI (grok-4.6, xhigh reasoning, read-only).
+description: Adversarial review of a plan (stage 2, alongside Fable and Astra) or of the integrated branch diff (stage 5, alongside Fable and Astra), via the Grok CLI (grok-4.6, xhigh reasoning, read-only).
 tools: Bash, Read, Write, Glob, Grep
 ---
 

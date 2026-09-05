@@ -1,13 +1,14 @@
 # Shipyard
 
-A five-stage shipping pipeline for Claude Code. Fable writes the plan, two
-adversarial reviewers on two other labs' models try to kill it, Codex and Grok
-agents implement every independent task in parallel git worktrees, and nothing
-merges until Fable, Sol and Grok have all attacked the integrated diff.
+A five-stage shipping pipeline for Claude Code. Astra writes the plan, three
+adversarial reviewers across three labs try to kill it, Codex and Grok agents
+implement every independent task in parallel git worktrees, and nothing merges
+until Fable, Astra and Grok have all attacked the integrated diff.
 
 Five models, five stages. Reviews hunt for reasons to reject; the gate is
-blockers, not an empty findings list. Fable reviews the branch built from its
-own plan, and is told to distrust it.
+blockers, not an empty findings list. Astra reviews the plan it wrote and the
+branch built from it — as fresh dispatches that carry none of the planning
+context, and are told to distrust both.
 
 ## Install
 
@@ -19,7 +20,8 @@ own plan, and is told to distrust it.
 ## Requires
 
 - The [Codex CLI](https://github.com/openai/codex) on `PATH` and authenticated
-  (`codex login`), 0.147 or newer. Two roles shell out to `codex exec`.
+  (`codex login`), 0.147 or newer. Two agents shell out to `codex exec`, and
+  one of them writes the plan, so Codex is required from stage 1 onwards.
   `--full-auto` is gone; Luna uses `--sandbox workspace-write --approve-for-me`.
 - The Grok CLI (`grok`) on `PATH` and authenticated (`grok login`). Two roles
   shell out to `grok --prompt-file`. Required unless you switch Grok off — see
@@ -31,17 +33,19 @@ the exact delegation form the wrappers use, and asserts that the read-only
 reviewer gates actually refuse a write — a green round-trip with a broken gate
 is the one failure that would otherwise look healthy.
 
-If you already keep any of `fable.md`, `codex.md`, `sol-reviewer.md`,
+If you already keep any of `astra.md`, `fable.md`, `codex.md`,
 `opus-reviewer.md`, `grok-implementer.md` or `grok-reviewer.md` in
 `~/.claude/agents/`, delete them after installing — the plugin ships the same
-names and duplicates are confusing.
+names and duplicates are confusing. Shipyard 0.4 and earlier shipped a
+`sol-reviewer` agent; `astra` replaces it, so delete any stale copy of that
+one too.
 
 ## The cast
 
 | Name | Agent | Model | Access |
 | --- | --- | --- | --- |
+| Astra | `astra` | gpt-5.6-astra, xhigh reasoning | read-only |
 | Fable | `fable` | Claude Fable | read-only |
-| Sol | `sol-reviewer` | gpt-5.6-sol, xhigh reasoning | read-only |
 | Luna | `codex` | gpt-5.6-luna, max reasoning | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
 | Grok | `grok-implementer` | grok-4.6, xhigh reasoning | write |
@@ -50,18 +54,21 @@ names and duplicates are confusing.
 Every name is a model, pinned in the agent definition — frontmatter for the
 Claude agents, a CLI argument for the wrappers. **Your session model
 doesn't matter** — start on Opus, Sonnet or Haiku and the plan is still written
-by Fable and the branch still reviewed by Fable, because both are dispatches to
-the pinned `fable` agent. Your session orchestrates: it dispatches, merges,
+by Astra and the branch still reviewed by Fable, Astra and Grok, because every
+stage is a dispatch to a pinned agent. Your session orchestrates: it dispatches, merges,
 resolves conflicts, and talks to you.
 
 Swap the model IDs in `agents/*.md` for whatever your accounts have. If your
-build doesn't recognise the `fable` alias, use the full ID `claude-fable-5`.
+build doesn't recognise the `fable` alias, use the full ID `claude-fable-5`;
+`agents/astra.md` pins `gpt-5.6-astra` on the Codex side.
 
 ## The pipeline
 
-1. **Plan** — Fable turns the spec into a plan, split into small tasks,
+1. **Plan** — Astra turns the spec into a plan, split into small tasks,
    marking which are independent and tagging each `ROUTINE` or `HARD`.
-2. **Plan review** — Sol and Grok attack the plan on paper, in parallel.
+2. **Plan review** — Fable, Grok and a *fresh* Astra attack the plan on paper,
+   in parallel. The second Astra is a new dispatch and a new `codex exec`: it
+   gets the spec and the plan text, never the planning run's context.
    Blockers get fixed before a line of code is written. Verdicts key off
    blockers: `EXECUTE AS-IS` means none, not "no nits". At most two rounds
    (full, then a delta if blockers were folded); residual nits travel with
@@ -76,8 +83,8 @@ build doesn't recognise the `fable` alias, use the full ID `claude-fable-5`.
    spawned it. `FIX` (blockers) goes back to the same implementer in the same
    worktree; `APPROVE` (nits allowed) lets the branch merge. A task is done
    only when approved *and* merged.
-5. **Branch review** — Fable, Sol and Grok all attack the integrated diff, in
-   parallel. Verdict: `MERGE AS-IS` / `MERGE WITH FIXES` / `DO NOT MERGE`,
+5. **Branch review** — Fable, Astra and Grok all attack the integrated diff,
+   in parallel. Verdict: `MERGE AS-IS` / `MERGE WITH FIXES` / `DO NOT MERGE`,
    derived from blockers. Fixes send the branch back through this stage; the
    PR opens only once every enabled reviewer has an empty blocker list on the
    diff as it then stands.
@@ -90,8 +97,8 @@ shipyard".
 ## Turning Grok off
 
 Set `SHIPYARD_NO_GROK=1` and the two Grok roles drop out: the plan gets reviewed
-by Sol alone, `HARD` tasks go to Luna with the routine ones, and the branch
-review runs Fable + Sol. The stage gates are unchanged. In
+by Fable and the fresh Astra, `HARD` tasks go to Luna with the routine ones, and
+the branch review runs Fable + Astra. The stage gates are unchanged. In
 `.claude/settings.json`:
 
 ```json
@@ -137,8 +144,9 @@ Every flag in the two grok commands is load-bearing, so don't trim them:
 The plan author and the plan reviewers share no weights, no context, and no
 sunk cost. Every role receives a self-contained prompt rather than the
 conversation, so none of them can inherit the assumption that produced the bug.
-Fable is the one role that reads its own work twice, and stage 5 tells it to
-attack the branch rather than defend the plan.
+Astra is the one role that reads its own work again, in stages 2 and 5, and
+both are fresh dispatches told to attack rather than defend — no session resume,
+no planning context, nothing to be loyal to.
 
 Because the roles are pinned models rather than "whatever is running", that
 independence doesn't quietly disappear when you switch your session model.
@@ -147,8 +155,10 @@ independence doesn't quietly disappear when you switch your session model.
 
 Everything is markdown. Common edits:
 
-- **No Codex account?** Point `agents/codex.md` at a different CLI, or replace
-  it with a plain Claude subagent — the pipeline shape survives.
+- **No Codex account?** Point `agents/codex.md` and `agents/astra.md` at a
+  different CLI, or replace them with plain Claude subagents — the pipeline
+  shape survives, though planning and two of the review seats then come from
+  the same lab.
 - **Solo tasks.** Stage 3 with one task is just "implement in a worktree". The
   review gates still apply.
 - **Different verdict vocabulary.** The skill's red-flags list keys off the
