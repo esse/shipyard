@@ -59,7 +59,7 @@ Do the work in a throwaway directory so nothing touches the user's tree:
 
    ```bash
    d=$(mktemp -d) && printf 'Reply with just: DONE\n' > "$d/p.md" \
-     && cd "$d" && codex exec --model gpt-5.6-astra -c model_reasoning_effort="low" \
+     && cd "$d" && codex exec --model gpt-6-astra -c model_reasoning_effort="low" \
        --sandbox read-only --skip-git-repo-check - < "$d/p.md" \
      ; echo "exit=$?"; rm -rf "$d"
    ```

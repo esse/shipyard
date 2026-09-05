@@ -44,7 +44,7 @@ one too.
 
 | Name | Agent | Model | Access |
 | --- | --- | --- | --- |
-| Astra | `astra` | gpt-5.6-astra, xhigh reasoning | read-only |
+| Astra | `astra` | gpt-6-astra, xhigh reasoning | read-only |
 | Fable | `fable` | Claude Fable | read-only |
 | Luna | `codex` | gpt-5.6-luna, max reasoning | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
@@ -60,7 +60,7 @@ resolves conflicts, and talks to you.
 
 Swap the model IDs in `agents/*.md` for whatever your accounts have. If your
 build doesn't recognise the `fable` alias, use the full ID `claude-fable-5`;
-`agents/astra.md` pins `gpt-5.6-astra` on the Codex side.
+`agents/astra.md` pins `gpt-6-astra` on the Codex side.
 
 ## The pipeline
 
