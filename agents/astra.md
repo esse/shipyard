@@ -1,6 +1,6 @@
 ---
 name: astra
-description: Writes the implementation plan (stage 1), and adversarially reviews the plan (stage 2) or the integrated branch diff (stage 5), via the Codex CLI (gpt-6-astra, xhigh reasoning, read-only).
+description: Writes the implementation plan (stage 1), and adversarially reviews the plan (stage 2) or the integrated branch diff (stage 5), via the Codex CLI (gpt-6-astra, medium reasoning, read-only).
 tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -166,7 +166,7 @@ For every job you receive:
    The command, for every job:
 
    ```bash
-   codex exec --model gpt-6-astra -c model_reasoning_effort="xhigh" \
+   codex exec --model gpt-6-astra -c model_reasoning_effort="medium" \
      --sandbox read-only --skip-git-repo-check - \
      < <dir>/prompt.md
    ```

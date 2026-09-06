@@ -44,7 +44,7 @@ one too.
 
 | Name | Agent | Model | Access |
 | --- | --- | --- | --- |
-| Astra | `astra` | gpt-6-astra, xhigh reasoning | read-only |
+| Astra | `astra` | gpt-6-astra, medium reasoning | read-only |
 | Fable | `fable` | Claude Fable | read-only |
 | Luna | `codex` | gpt-5.6-luna, max reasoning | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
