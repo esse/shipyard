@@ -11,7 +11,7 @@ Five stages, in order. No skipping, no reordering.
 
 | Name | Agent | Model | Access |
 |---|---|---|---|
-| Astra | `astra` | gpt-6-astra, xhigh | read-only |
+| Astra | `astra` | gpt-6-astra, medium | read-only |
 | Fable | `fable` | Claude Fable | read-only |
 | Luna | `codex` | gpt-5.6-luna, max | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
