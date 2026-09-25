@@ -205,7 +205,7 @@ Rules:
   Empty blockers → MERGE AS-IS.
 - **Run the CLI in the foreground**, with the Bash tool's own `timeout` set
   to its maximum (`600000` ms), and pass the working directory using
-  `codex`'s `--cwd` flag rather than `cd <path> && codex`. A compound `cd`
+  `codex`'s `--cd` flag rather than `cd <path> && codex`. A compound `cd`
   can trip the permission classifier, and when it does the bare command
   silently runs in the session's own directory — which on a worktree task
   means writing to the wrong checkout.

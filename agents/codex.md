@@ -47,13 +47,19 @@ For every task you receive:
 
    ```bash
    codex exec --model gpt-5.6-luna -c model_reasoning_effort="max" \
-     --sandbox workspace-write --approve-for-me --skip-git-repo-check - \
+     --sandbox workspace-write -c approval_policy='"never"' \
+     -c sandbox_workspace_write.network_access=true \
+     --skip-git-repo-check --cd <worktree> - \
      < <dir>/prompt.md
    ```
 
-   `--sandbox workspace-write` is the confinement. `--approve-for-me`
-   keeps the run headless when the user config would otherwise prompt.
-   Do not pass `--full-auto` (removed in Codex 0.147). Do not pass
+   `--sandbox workspace-write` is the confinement. `approval_policy="never"`
+   keeps the run headless: a command the sandbox refuses fails instead of
+   waiting for an approval nobody can give. `network_access=true` lets test
+   suites reach local services (databases, caches); the filesystem stays
+   confined. Do not pass `--approve-for-me`: since Codex 0.153 it conflicts
+   with `--sandbox`, and on its own it auto-approves writes outside the
+   workspace. Do not pass `--full-auto` (removed in Codex 0.147). Do not pass
    `--dangerously-bypass-approvals-and-sandbox`. Do not add the git
    common dir as a writable root so the inner CLI can commit.
 
@@ -85,9 +91,9 @@ Rules:
 
 - Always `codex exec` reading the prompt from a file on stdin (`-`).
   Never launch the interactive TUI.
-- `--sandbox workspace-write --approve-for-me` stay together. Never drop
-  either to "simplify" the command, and never replace them with
-  `--dangerously-bypass-approvals-and-sandbox`.
+- `--sandbox workspace-write -c approval_policy='"never"'` stay together.
+  Never drop either to "simplify" the command, never add `--approve-for-me`,
+  and never replace them with `--dangerously-bypass-approvals-and-sandbox`.
 - If `codex` is not on PATH or authentication fails, report the exact
   error and stop. Do not install, update, or log in on your own.
 - One codex call per task by default; a single follow-up call is allowed
@@ -95,7 +101,7 @@ Rules:
   context you can supply.
 - **Run the CLI in the foreground**, with the Bash tool's own `timeout` set
   to its maximum (`600000` ms), and pass the working directory using
-  `codex`'s `--cwd` flag rather than `cd <path> && codex`. A compound `cd`
+  `codex`'s `--cd` flag rather than `cd <path> && codex`. A compound `cd`
   can trip the permission classifier, and when it does the bare command
   silently runs in the session's own directory — which on a worktree task
   means writing to the wrong checkout.

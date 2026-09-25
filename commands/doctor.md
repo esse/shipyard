@@ -17,10 +17,11 @@ Do the work in a throwaway directory so nothing touches the user's tree:
 2. **Authenticated** — `codex login status`. Anything other than a logged-in
    line is a failure; do not attempt to log in.
 3. **Flags the wrappers pass actually exist** — `codex exec --help`. Pass only
-   if the output lists both `--sandbox` and `--approve-for-me`. Fail if
-   `--approve-for-me` is missing (Codex older than 0.147, or a flag rename):
-   Luna's command will error on startup. Do not pass `--full-auto`; it was
-   removed in 0.147 and is not in the wrappers.
+   if the output lists `--sandbox` and `--cd`. Luna runs headless via
+   `-c approval_policy="never"`, not `--approve-for-me` (which conflicts with
+   `--sandbox` since 0.153 and, alone, auto-approves writes outside the
+   workspace). Do not pass `--full-auto`; it was removed in 0.147 and is not
+   in the wrappers.
 4. **Delegation round-trip in a linked worktree**, Luna's exact invocation,
    then a **host** commit — the path the wrapper uses, because
    `workspace-write` cannot write a linked worktree's git index:
@@ -37,8 +38,10 @@ Do the work in a throwaway directory so nothing touches the user's tree:
    git -C "$repo" -c commit.gpgsign=false commit -m seed
    git -C "$repo" worktree add "$wt" -b shipyard-doctor
    printf 'Create ok.txt containing OK here, then reply with just: DONE\n' > "$d/p.md"
-   ( cd "$wt" && codex exec --model gpt-5.6-luna -c model_reasoning_effort="low" \
-       --sandbox workspace-write --approve-for-me --skip-git-repo-check - < "$d/p.md" )
+   codex exec --model gpt-5.6-luna -c model_reasoning_effort="low" \
+       --sandbox workspace-write -c approval_policy='"never"' \
+       -c sandbox_workspace_write.network_access=true \
+       --skip-git-repo-check --cd "$wt" - < "$d/p.md"
    echo "codex_exit=$?"
    cat "$wt/ok.txt" 2>&1
    git -C "$wt" add ok.txt

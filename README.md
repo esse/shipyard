@@ -22,7 +22,8 @@ context, and are told to distrust both.
 - The [Codex CLI](https://github.com/openai/codex) on `PATH` and authenticated
   (`codex login`), 0.147 or newer. Two agents shell out to `codex exec`, and
   one of them writes the plan, so Codex is required from stage 1 onwards.
-  `--full-auto` is gone; Luna uses `--sandbox workspace-write --approve-for-me`.
+  `--full-auto` is gone; Luna uses `--sandbox workspace-write -c approval_policy="never"`
+  (`--approve-for-me` conflicts with `--sandbox` since 0.153).
 - The Grok CLI (`grok`) on `PATH` and authenticated (`grok login`). Two roles
   shell out to `grok --prompt-file`. Required unless you switch Grok off — see
   [Turning Grok off](#turning-grok-off).
