@@ -13,7 +13,7 @@ Five stages, in order. No skipping, no reordering.
 |---|---|---|---|
 | Astra | `astra` | gpt-6-astra, medium | read-only |
 | Fable | `fable` | Claude Fable | read-only |
-| Luna | `codex` | gpt-5.6-luna, max | write |
+| Luna | `codex` | gpt-6-luna, max | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
 | Grok | `grok-implementer` | grok-4.6, xhigh | write |
 | Grok | `grok-reviewer` | grok-4.6, xhigh | read-only |

@@ -47,7 +47,7 @@ one too.
 | --- | --- | --- | --- |
 | Astra | `astra` | gpt-6-astra, medium reasoning | read-only |
 | Fable | `fable` | Claude Fable | read-only |
-| Luna | `codex` | gpt-5.6-luna, max reasoning | write |
+| Luna | `codex` | gpt-6-luna, max reasoning | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
 | Grok | `grok-implementer` | grok-4.6, xhigh reasoning | write |
 | Grok | `grok-reviewer` | grok-4.6, xhigh reasoning | read-only |

@@ -38,7 +38,7 @@ Do the work in a throwaway directory so nothing touches the user's tree:
    git -C "$repo" -c commit.gpgsign=false commit -m seed
    git -C "$repo" worktree add "$wt" -b shipyard-doctor
    printf 'Create ok.txt containing OK here, then reply with just: DONE\n' > "$d/p.md"
-   codex exec --model gpt-5.6-luna -c model_reasoning_effort="low" \
+   codex exec --model gpt-6-luna -c model_reasoning_effort="low" \
        --sandbox workspace-write -c approval_policy='"never"' \
        -c sandbox_workspace_write.network_access=true \
        --skip-git-repo-check --cd "$wt" - < "$d/p.md"

@@ -1,6 +1,6 @@
 ---
 name: codex
-description: Delegate a task to the OpenAI Codex CLI running gpt-5.6-luna at max reasoning effort. Use when the user explicitly asks for codex, a GPT second opinion, or cross-model review of a plan, diff, or piece of code.
+description: Delegate a task to the OpenAI Codex CLI running gpt-6-luna at max reasoning effort. Use when the user explicitly asks for codex, a GPT second opinion, or cross-model review of a plan, diff, or piece of code.
 tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -46,7 +46,7 @@ For every task you receive:
 3. Run `codex exec` reading the prompt from that file on stdin (`-`):
 
    ```bash
-   codex exec --model gpt-5.6-luna -c model_reasoning_effort="max" \
+   codex exec --model gpt-6-luna -c model_reasoning_effort="max" \
      --sandbox workspace-write -c approval_policy='"never"' \
      -c sandbox_workspace_write.network_access=true \
      --skip-git-repo-check --cd <worktree> - \
