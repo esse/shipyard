@@ -15,8 +15,8 @@ Five stages, in order. No skipping, no reordering.
 | Fable | `fable` | Claude Fable | read-only |
 | Luna | `codex` | gpt-6-luna, max | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
-| Grok | `grok-implementer` | grok-4.6, xhigh | write |
-| Grok | `grok-reviewer` | grok-4.6, xhigh | read-only |
+| Grok | `grok-implementer` | grok-4.7, xhigh | write |
+| Grok | `grok-reviewer` | grok-4.7, xhigh | read-only |
 
 Every review in this pipeline is **adversarial** — Fable, Astra, Grok and Opus all hunt for reasons to reject. The gate is blockers, not an empty findings list. `EXECUTE AS-IS` / `MERGE AS-IS` / `APPROVE` mean no blockers, not praise. `grok-reviewer` returns no verdict word at all — its blocker list *is* its verdict, because its verdicts ran lenient while its findings ran sharp. Astra wrote the plan and reviews it again in stage 2, and the branch in stage 5; the fresh dispatch is what keeps that honest — a new subagent, a new `codex exec`, none of the planning context.
 

@@ -1,6 +1,6 @@
 ---
 name: grok-reviewer
-description: Adversarial review of a plan (stage 2, alongside Fable and Astra) or of the integrated branch diff (stage 5, alongside Fable and Astra), via the Grok CLI (grok-4.6, xhigh reasoning, read-only).
+description: Adversarial review of a plan (stage 2, alongside Fable and Astra) or of the integrated branch diff (stage 5, alongside Fable and Astra), via the Grok CLI (grok-4.7, xhigh reasoning, read-only).
 tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -135,7 +135,7 @@ For every plan or spec you receive:
 
    ```bash
    grok --prompt-file <dir>/prompt.md \
-     --model grok-4.6 --effort xhigh --no-plan --sandbox read-only \
+     --model grok-4.7 --effort xhigh --no-plan --sandbox read-only \
      --tools read_file,list_dir,grep \
      --deny Edit --deny Write --deny Bash --deny MCPTool
    ```

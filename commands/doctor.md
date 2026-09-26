@@ -74,13 +74,13 @@ non-empty value — Grok is off for this project, and a missing CLI is then
 expected rather than a fault.
 
 1. **On PATH** — `command -v grok`.
-2. **Authenticated, and grok-4.6 available** — `grok models`. Fail if the model
+2. **Authenticated, and grok-4.7 available** — `grok models`. Fail if the model
    the agents pin is absent from the list.
 3. **Delegation round-trip**, the implementer's exact form:
 
    ```bash
    d=$(mktemp -d) && printf 'Create ok.txt containing OK here, then reply with just: DONE\n' > "$d/p.md" \
-     && cd "$d" && grok --prompt-file "$d/p.md" --model grok-4.6 --effort low \
+     && cd "$d" && grok --prompt-file "$d/p.md" --model grok-4.7 --effort low \
        --always-approve --no-plan --sandbox workspace --deny MCPTool \
      ; echo "exit=$?"; cat "$d/ok.txt" 2>&1; rm -rf "$d"
    ```
@@ -101,7 +101,7 @@ expected rather than a fault.
 
    ```bash
    d=$(mktemp -d) && printf 'Create PROBE-DELETEME.txt containing x in the current directory. Report the exact error if it fails.\n' > "$d/p.md" \
-     && grok --prompt-file "$d/p.md" --model grok-4.6 --effort low --no-plan \
+     && grok --prompt-file "$d/p.md" --model grok-4.7 --effort low --no-plan \
        --sandbox read-only --tools read_file,list_dir,grep \
        --deny Edit --deny Write --deny Bash --deny MCPTool \
      ; echo "exit=$?"; ls PROBE-DELETEME.txt 2>&1; rm -rf "$d"

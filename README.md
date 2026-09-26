@@ -49,8 +49,8 @@ one too.
 | Fable | `fable` | Claude Fable | read-only |
 | Luna | `codex` | gpt-6-luna, max reasoning | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
-| Grok | `grok-implementer` | grok-4.6, xhigh reasoning | write |
-| Grok | `grok-reviewer` | grok-4.6, xhigh reasoning | read-only |
+| Grok | `grok-implementer` | grok-4.7, xhigh reasoning | write |
+| Grok | `grok-reviewer` | grok-4.7, xhigh reasoning | read-only |
 
 Every name is a model, pinned in the agent definition — frontmatter for the
 Claude agents, a CLI argument for the wrappers. **Your session model

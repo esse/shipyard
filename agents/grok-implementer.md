@@ -1,6 +1,6 @@
 ---
 name: grok-implementer
-description: Implement one hard or design-heavy task via the Grok CLI (grok-4.6, xhigh reasoning, write-enabled). Use for plan tasks the planner marked HARD; routine tasks go to the codex agent.
+description: Implement one hard or design-heavy task via the Grok CLI (grok-4.7, xhigh reasoning, write-enabled). Use for plan tasks the planner marked HARD; routine tasks go to the codex agent.
 tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -46,7 +46,7 @@ For every task you receive:
 
    ```bash
    grok --prompt-file <dir>/prompt.md \
-     --model grok-4.6 --effort xhigh --always-approve --no-plan \
+     --model grok-4.7 --effort xhigh --always-approve --no-plan \
      --sandbox workspace --deny MCPTool
    ```
 
