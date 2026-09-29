@@ -63,7 +63,7 @@ For every task you receive:
      your own answer for grok's);
    - the sandbox did not apply. Check both: a `warning: sandbox could not
      be applied` line on stderr, and the last `ProfileApplied` event in
-     `~/.grok/sandbox-events.jsonl`, which carries `"enforced": true` when
+     `~/.grok/sessions/sandbox-events.jsonl`, which carries `"enforced": true` when
      the profile really took effect. Reading only grok's answer will miss
      this.
    - step 4 showed no changes at all — a run that wrote nothing has

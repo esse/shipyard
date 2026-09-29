@@ -132,7 +132,7 @@ Every flag in the two grok commands is load-bearing, so don't trim them:
   Do not add the git common dir as a writable root to paper over this.
 - **A built-in profile that can't be applied only warns, then runs
   unconfined.** The wrappers are told to detect that — on stderr and via the
-  `ProfileApplied` event in `~/.grok/sandbox-events.jsonl` — and refuse to
+  `ProfileApplied` event in `~/.grok/sessions/sandbox-events.jsonl` — and refuse to
   commit, but detection happens after the run. For prevention instead, define a
   custom profile with a non-empty `deny` list in `.grok/sandbox.toml` and name
   it in the command: grok refuses to start rather than expose denied paths when

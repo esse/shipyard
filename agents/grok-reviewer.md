@@ -162,7 +162,7 @@ Rules:
 - If the sandbox did not apply, treat it as a hard error and stop —
   grok otherwise continues unprotected. Check for a `warning: sandbox
   could not be applied` line on stderr, and for `"enforced": true` on the
-  last `ProfileApplied` event in `~/.grok/sandbox-events.jsonl`.
+  last `ProfileApplied` event in `~/.grok/sessions/sandbox-events.jsonl`.
 - With these flags grok has no shell of its own, so gather any
   `git diff` / `git log` / test output yourself and paste it into the
   prompt. That, and files grok cannot open, is the whole of what

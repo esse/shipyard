@@ -87,12 +87,12 @@ expected rather than a fault.
 
    Same pass condition: `DONE` returned and `ok.txt` present.
 4. **Sandbox actually enforced** — after that run, the last event in
-   `~/.grok/sandbox-events.jsonl` must be `ProfileApplied` with
+   `~/.grok/sessions/sandbox-events.jsonl` must be `ProfileApplied` with
    `"enforced": true`. A profile that failed to apply only warns, so this is the
    check that catches it:
 
    ```bash
-   tail -1 ~/.grok/sandbox-events.jsonl
+   tail -1 ~/.grok/sessions/sandbox-events.jsonl
    ```
 
 5. **The reviewer's read-only gate really denies** — the security-critical one.
