@@ -15,18 +15,19 @@ Five stages, in order. No skipping, no reordering.
 | Fable | `fable` | Claude Fable | read-only |
 | Luna | `codex` | gpt-6-luna, max | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
+| Sonnet | `sonnet-implementer` | Claude Sonnet 5.5 | write |
 | Grok | `grok-implementer` | grok-4.7, xhigh | write |
 | Grok | `grok-reviewer` | grok-4.7, xhigh | read-only |
 
 Every review in this pipeline is **adversarial** — Fable, Astra, Grok and Opus all hunt for reasons to reject. The gate is blockers, not an empty findings list. `EXECUTE AS-IS` / `MERGE AS-IS` / `APPROVE` mean no blockers, not praise. `grok-reviewer` returns no verdict word at all — its blocker list *is* its verdict, because its verdicts ran lenient while its findings ran sharp. Astra wrote the plan and reviews it again in stage 2, and the branch in stage 5; the fresh dispatch is what keeps that honest — a new subagent, a new `codex exec`, none of the planning context.
 
-**Grok is optional, and the env var is the only switch.** Before stage 2, run `printenv SHIPYARD_NO_GROK`. Any non-empty value (use `1`) turns Grok off for this project, which changes exactly three dispatch sites: stage 2 drops `grok-reviewer` (leaving Fable and a fresh Astra), stage 3 routes HARD tasks to `codex` along with the routine ones, stage 5 drops `grok-reviewer`. Say once, in stage 2, that Grok is disabled; every gate stays as it is. With the var unset, a missing or unauthenticated `grok` is a hard stop exactly like a missing `codex` — report it and wait, don't decide for yourself to run without Grok.
+**Grok is optional, and the env var is the only switch.** Before stage 2, run `printenv SHIPYARD_NO_GROK`. Any non-empty value (use `1`) turns Grok off for this project, which changes exactly three dispatch sites: stage 2 drops `grok-reviewer` (leaving Fable and a fresh Astra), stage 3 routes ROUTINE tasks to `codex` along with the easy ones (HARD still goes to `sonnet-implementer`), stage 5 drops `grok-reviewer`. Say once, in stage 2, that Grok is disabled; every gate stays as it is. With the var unset, a missing or unauthenticated `grok` is a hard stop exactly like a missing `codex` — report it and wait, don't decide for yourself to run without Grok.
 
 Every name is a **model**, pinned in `agents/*.md`, and every stage runs on the model named for it — whatever model this session happens to be. You are the orchestrator, not one of the cast: you dispatch, you merge, you resolve conflicts, you talk to the user. Stages 2 and 5 are `fable` dispatches even if this session is already Fable, and stage 4 is an `opus-reviewer` dispatch even if this session is already Opus. Never do a stage's work inline because you happen to share its weights — the fresh context is half the point.
 
 Astra and Luna shell out to the Codex CLI; the two Grok agents shell out to the Grok CLI. If either binary is missing from PATH or unauthenticated, the agent reports the error and stops — don't route around it by doing the work yourself. `/shipyard:doctor` checks both CLIs end to end, including whether the read-only gates really deny; run it when a dispatch fails for a reason that looks environmental rather than about the task.
 
-**Access is enforced differently per agent, and the flags are load-bearing.** Fable and Opus are native Claude subagents held read-only by their instructions alone — their tool lists include `Bash`, so nothing mechanical stops them. Astra is confined by `--sandbox read-only`, in every job including stage 1's planning; Luna by `--sandbox workspace-write` (headless via `approval_policy="never"`); `grok-implementer` by `--sandbox workspace`, which refuses writes to the repository outside its worktree while still allowing `~/.grok` and the temp dirs. `grok-reviewer` is confined twice over, by `--sandbox read-only` and by four deny rules. Both grok roles need `--deny MCPTool` on top of any sandbox, because MCP servers are separate processes a sandbox does not cover.
+**Access is enforced differently per agent, and the flags are load-bearing.** Fable and Opus are native Claude subagents held read-only by their instructions alone — their tool lists include `Bash`, so nothing mechanical stops them. Astra is confined by `--sandbox read-only`, in every job including stage 1's planning; Luna by `--sandbox workspace-write` (headless via `approval_policy="never"`); `grok-implementer` by `--sandbox workspace`, which refuses writes to the repository outside its worktree while still allowing `~/.grok` and the temp dirs. `sonnet-implementer` has no sandbox at all: it is a native Claude subagent held to its worktree by its instructions, so after every Sonnet task run `git status --short` in the main checkout and treat any change you didn't make as a breach — that worktree is untrusted and does not merge. `grok-reviewer` is confined twice over, by `--sandbox read-only` and by four deny rules. Both grok roles need `--deny MCPTool` on top of any sandbox, because MCP servers are separate processes a sandbox does not cover.
 
 One caveat that reaches you, not just the agents: a built-in grok sandbox profile that *cannot* be applied only warns and then runs unconfined. Both grok agents are required to detect that and stop, but detection is after the fact — so if one reports it, treat that worktree as untrusted and don't merge it. Never drop one of those flags to "simplify" a command.
 
@@ -40,7 +41,7 @@ None of them sees this conversation. Every dispatch prompt must be self-containe
 
 ## Stages
 
-**1. Plan — Astra.** `Agent(subagent_type: "astra")` with the spec or brief and everything the user said about it. Astra returns the plan, broken into small tasks, with the independent ones marked and each tagged `ROUTINE` or `HARD`. You own it from there: read it, and send it back if it missed the ask or left tasks untagged.
+**1. Plan — Astra.** `Agent(subagent_type: "astra")` with the spec or brief and everything the user said about it. Astra returns the plan, broken into small tasks, with the independent ones marked and each tagged `EASY`, `ROUTINE` or `HARD`. You own it from there: read it, and send it back if it missed the ask or left tasks untagged.
 
 **2. Plan review — Fable + Astra + Grok.** Dispatch `fable`, `astra` and `grok-reviewer` in one message so they run in parallel, each given the original spec *and* the plan — a reviewer holding only the plan cannot see a requirement the plan dropped. The `astra` dispatch is a fresh one: it carries the spec and the plan text, never the planning run's context or session id, so it reads its own plan as a stranger's.
 
@@ -56,11 +57,11 @@ Cap at two rounds (one full, one delta). After round 2:
 
 **Implementation starts when every enabled reviewer has an empty blocker list on the current plan, or when round 2 closed with only nits and risks remaining** (with `SHIPYARD_NO_GROK` set, that set is Fable and Astra). Nothing else opens the gate. Where reviewers contradict each other on a non-blocking finding, say which you took and why.
 
-**3. Implement — Luna and Grok.** **Create each worktree yourself, before dispatching**, and pass its absolute path in the brief: `git worktree add <root>/<repo>-<task-slug> -b <branch>`. Then dispatch one agent per task, all in a single message so they run in parallel.
+**3. Implement — Luna, Grok and Sonnet.** **Create each worktree yourself, before dispatching**, and pass its absolute path in the brief: `git worktree add <root>/<repo>-<task-slug> -b <branch>`. Then dispatch one agent per task, all in a single message so they run in parallel.
 
-Do **not** use `isolation: "worktree"`. It picks its own path, and you need the path in advance for three things: a project's own convention for where worktrees live, seeding the tree so the agent can build (dependencies, build artifacts, submodule sources — a bare worktree usually cannot compile or run tests), and `grok-implementer`'s `--sandbox workspace`, whose confinement root *is* that path. Verify the tree compiles before you dispatch; an agent that cannot run the suite will report a gate it never ran. Route by the plan's tag: `ROUTINE` → `codex`, `HARD` → `grok-implementer`. Include residual stage-2 nits and risks in each brief as non-blocking notes. Each wrapper commits in its own worktree; the inner CLI does not.
+Do **not** use `isolation: "worktree"`. It picks its own path, and you need the path in advance for three things: a project's own convention for where worktrees live, seeding the tree so the agent can build (dependencies, build artifacts, submodule sources — a bare worktree usually cannot compile or run tests), and `grok-implementer`'s `--sandbox workspace`, whose confinement root *is* that path. Verify the tree compiles before you dispatch; an agent that cannot run the suite will report a gate it never ran. Route by the plan's tag: `EASY` → `codex`, `ROUTINE` → `grok-implementer`, `HARD` → `sonnet-implementer`. Include residual stage-2 nits and risks in each brief as non-blocking notes. Each wrapper commits in its own worktree; the inner CLI does not. `sonnet-implementer` has no inner CLI and commits its own work.
 
-**4. Task review — Opus.** As each task finishes, `Agent(subagent_type: "opus-reviewer")` on that worktree's commit plus the plan step it implements. `FIX` (non-empty blockers) → back to the *same* implementer agent (`codex` or `grok-implementer`) in the *same* worktree, then re-review. `APPROVE` (empty blockers, nits allowed) → merge that worktree branch into the working branch (you resolve conflicts).
+**4. Task review — Opus.** As each task finishes, `Agent(subagent_type: "opus-reviewer")` on that worktree's commit plus the plan step it implements. `FIX` (non-empty blockers) → back to the *same* implementer agent (`codex`, `grok-implementer` or `sonnet-implementer`) in the *same* worktree, then re-review. `APPROVE` (empty blockers, nits allowed) → merge that worktree branch into the working branch (you resolve conflicts).
 
 A task is done only when approved **and** merged.
 
@@ -68,7 +69,7 @@ A task is done only when approved **and** merged.
 
 This stage gates the branch's *final* state, so a verdict dies the moment the diff changes. Do not round-cap stage 5. The repair loop, when any reviewer reports a blocker you accept:
 
-1. Tag the repair brief and dispatch it to `codex` (`ROUTINE`) or `grok-implementer` (`HARD`) in a fresh worktree **you create and seed first**, as in stage 3, where it commits. Same rule as stage 1: `ROUTINE` only if the change is fully prescribed, follows a pattern already in the codebase, and leaves no open decision about API shape, data format, security, compatibility, concurrency or migration; otherwise `HARD`.
+1. Tag the repair brief and dispatch it to `codex` (`EASY`), `grok-implementer` (`ROUTINE`) or `sonnet-implementer` (`HARD`) in a fresh worktree **you create and seed first**, as in stage 3, where it commits. Same rule as stage 1: `EASY` only if the change is fully prescribed, follows a pattern already in the codebase, and leaves no open decision about API shape, data format, security, compatibility, concurrency or migration; `ROUTINE` if it leaves none of those decisions open but is not fully prescribed or has no pattern to copy; otherwise `HARD`.
 2. `opus-reviewer` on that commit, with the findings as the step it implements. FIX goes back to the same agent; APPROVE lets you merge it into the branch.
 3. Regenerate the integrated diff and **re-dispatch every enabled reviewer as a delta**, not only the ones who complained: previous review, new diff, what was fixed. Not a first-pass re-read of accepted text.
 
@@ -80,7 +81,8 @@ This stage gates the branch's *final* state, so a verdict dies the moment the di
 - Full re-review of a plan or branch after a fold → that is a delta. A new first pass is how nits regenerate.
 - Starting a third stage-2 round on your own → stop and ask.
 - Folding nits as if they were blockers, or looping until findings are zero → the gate is blockers.
-- Sending a `HARD` task to `codex` while Grok is enabled, or a `ROUTINE` one to `grok-implementer` ever → the tag exists to pick the model; follow it.
+- Sending a task to any implementer but the one its tag names (`EASY` → `codex`, `ROUTINE` → `grok-implementer`, `HARD` → `sonnet-implementer`; `ROUTINE` → `codex` only when `SHIPYARD_NO_GROK` is set) → the tag exists to pick the model; follow it.
+- Merging a Sonnet worktree without checking the main checkout for stray writes → it has no sandbox; the check is the only gate.
 - Deciding for yourself that Grok is "not needed" → `SHIPYARD_NO_GROK` is the user's switch, not your call.
 - Merging a worktree branch Opus hasn't approved → not done.
 - Sequential implementer dispatches for independent tasks → wasted wall-clock; one message, many calls.

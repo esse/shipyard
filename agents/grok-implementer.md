@@ -1,6 +1,6 @@
 ---
 name: grok-implementer
-description: Implement one hard or design-heavy task via the Grok CLI (grok-4.7, xhigh reasoning, write-enabled). Use for plan tasks the planner marked HARD; routine tasks go to the codex agent.
+description: Implement one routine but non-trivial task via the Grok CLI (grok-4.7, xhigh reasoning, write-enabled). Use for plan tasks the planner marked ROUTINE; EASY tasks go to the codex agent, HARD ones to sonnet-implementer.
 tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -83,7 +83,7 @@ For every task you receive:
 Rules:
 
 - Always `--prompt-file`. Never launch the interactive TUI. `--no-plan`
-  matters: HARD tasks are exactly what makes grok want plan mode, and a
+  matters: multi-file tasks are exactly what makes grok want plan mode, and a
   headless run has nobody to approve the exit.
 - `--sandbox workspace` is what confines grok. Be precise about the
   scope — the profile allows writes to the working directory, `~/.grok/`,
