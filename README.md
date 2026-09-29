@@ -1,11 +1,11 @@
 # Shipyard
 
 A five-stage shipping pipeline for Claude Code. Astra writes the plan, three
-adversarial reviewers across three labs try to kill it, Codex and Grok agents
-implement every independent task in parallel git worktrees, and nothing merges
+adversarial reviewers across three labs try to kill it, Codex, Grok and Sonnet
+agents implement every independent task in parallel git worktrees, and nothing merges
 until Fable, Astra and Grok have all attacked the integrated diff.
 
-Five models, five stages. Reviews hunt for reasons to reject; the gate is
+Six models, five stages. Reviews hunt for reasons to reject; the gate is
 blockers, not an empty findings list. Astra reviews the plan it wrote and the
 branch built from it — as fresh dispatches that carry none of the planning
 context, and are told to distrust both.
@@ -35,7 +35,8 @@ reviewer gates actually refuse a write — a green round-trip with a broken gate
 is the one failure that would otherwise look healthy.
 
 If you already keep any of `astra.md`, `fable.md`, `codex.md`,
-`opus-reviewer.md`, `grok-implementer.md` or `grok-reviewer.md` in
+`opus-reviewer.md`, `sonnet-implementer.md`, `grok-implementer.md` or
+`grok-reviewer.md` in
 `~/.claude/agents/`, delete them after installing — the plugin ships the same
 names and duplicates are confusing. Shipyard 0.4 and earlier shipped a
 `sol-reviewer` agent; `astra` replaces it, so delete any stale copy of that
@@ -49,6 +50,7 @@ one too.
 | Fable | `fable` | Claude Fable | read-only |
 | Luna | `codex` | gpt-6-luna, max reasoning | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
+| Sonnet | `sonnet-implementer` | Claude Sonnet 5.5 | write |
 | Grok | `grok-implementer` | grok-4.7, xhigh reasoning | write |
 | Grok | `grok-reviewer` | grok-4.7, xhigh reasoning | read-only |
 
@@ -60,13 +62,14 @@ stage is a dispatch to a pinned agent. Your session orchestrates: it dispatches,
 resolves conflicts, and talks to you.
 
 Swap the model IDs in `agents/*.md` for whatever your accounts have. If your
-build doesn't recognise the `fable` alias, use the full ID `claude-fable-5`;
+build doesn't recognise the `fable` or `sonnet` alias, use the full ID
+`claude-fable-5` or `claude-sonnet-5-5`;
 `agents/astra.md` pins `gpt-6-astra` on the Codex side.
 
 ## The pipeline
 
 1. **Plan** — Astra turns the spec into a plan, split into small tasks,
-   marking which are independent and tagging each `ROUTINE` or `HARD`.
+   marking which are independent and tagging each `EASY`, `ROUTINE` or `HARD`.
 2. **Plan review** — Fable, Grok and a *fresh* Astra attack the plan on paper,
    in parallel. The second Astra is a new dispatch and a new `codex exec`: it
    gets the spec and the plan text, never the planning run's context.
@@ -75,11 +78,11 @@ build doesn't recognise the `fable` alias, use the full ID `claude-fable-5`;
    (full, then a delta if blockers were folded); residual nits travel with
    the tasks rather than looping.
 3. **Implement** — one agent per task, all dispatched at once, each in its own
-   git worktree so parallel file edits can't collide, and sandboxed to it
-   (with one caveat — see [How the roles are
-   confined](#how-the-roles-are-confined)). `ROUTINE` tasks go to
-   Luna, `HARD` ones to Grok. Each wrapper commits in its worktree; the inner
-   CLI does not.
+   git worktree so parallel file edits can't collide. `EASY` tasks go to
+   Luna, `ROUTINE` ones to Grok, `HARD` ones to Sonnet. Luna and Grok are
+   sandboxed to their worktree, Sonnet only by its instructions (see [How the
+   roles are confined](#how-the-roles-are-confined)). Each agent commits in
+   its worktree; the Codex and Grok CLIs inside the wrappers do not.
 4. **Task review** — Opus reviews each finished task against the plan step that
    spawned it. `FIX` (blockers) goes back to the same implementer in the same
    worktree; `APPROVE` (nits allowed) lets the branch merge. A task is done
@@ -98,7 +101,7 @@ shipyard".
 ## Turning Grok off
 
 Set `SHIPYARD_NO_GROK=1` and the two Grok roles drop out: the plan gets reviewed
-by Fable and the fresh Astra, `HARD` tasks go to Luna with the routine ones, and
+by Fable and the fresh Astra, `ROUTINE` tasks go to Luna with the easy ones, and
 the branch review runs Fable + Astra. The stage gates are unchanged. In
 `.claude/settings.json`:
 
@@ -130,6 +133,10 @@ Every flag in the two grok commands is load-bearing, so don't trim them:
 - **Luna has the same commit split.** `--sandbox workspace-write` does not
   include a linked worktree's git index, so the `codex` wrapper commits.
   Do not add the git common dir as a writable root to paper over this.
+- **`sonnet-implementer` has no sandbox.** It is a native Claude subagent,
+  held to its worktree by its instructions alone, so the orchestrator checks
+  the main checkout after every Sonnet task and won't merge one that wrote
+  outside its tree. That is detection, not prevention.
 - **A built-in profile that can't be applied only warns, then runs
   unconfined.** The wrappers are told to detect that — on stderr and via the
   `ProfileApplied` event in `~/.grok/sessions/sandbox-events.jsonl` — and refuse to

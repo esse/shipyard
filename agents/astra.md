@@ -67,15 +67,18 @@ For every job you receive:
    - Mark explicitly which tasks are independent of each other. They get
      implemented in parallel git worktrees, so a hidden ordering
      dependency breaks the pipeline.
-   - Tag every task ROUTINE or HARD; the tag picks the implementer
-     model. ROUTINE is the narrow case: the change is fully prescribed,
+   - Tag every task EASY, ROUTINE or HARD; the tag picks the implementer
+     model. EASY is the narrow case: the change is fully prescribed,
      follows a pattern already in this codebase that you can name, and
      leaves no open decision about API shape, data format, security,
      compatibility, concurrency or migration. Renames, plumbing and
-     "apply this pattern to N call sites" are ROUTINE *when they meet
+     "apply this pattern to N call sites" are EASY *when they meet
      every condition above* — a rename that forces a compatibility
-     decision does not. Everything else is HARD, as is anything the user
-     asked a stronger model to do.
+     decision does not. ROUTINE leaves none of those decisions open
+     either, but is not fully prescribed or has no pattern to copy: the
+     implementer has to work out the how, never the what. Anything with
+     one of those decisions open is HARD, as is anything the user asked a
+     stronger model to do.
    - Every task must be implementable by an agent that sees only the
      task text: name the files, the conventions, the interfaces it
      depends on.
