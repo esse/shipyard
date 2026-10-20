@@ -53,6 +53,7 @@ one too.
 | Sonnet | `sonnet-implementer` | Claude Sonnet 5.5 | write |
 | Grok | `grok-implementer` | grok-4.7, xhigh reasoning | write |
 | Grok | `grok-reviewer` | grok-4.7, xhigh reasoning | read-only |
+| Mythos | `mythos` | Claude Mythos (opt-in security scan) | read-only |
 
 Every name is a model, pinned in the agent definition — frontmatter for the
 Claude agents, a CLI argument for the wrappers. **Your session model
@@ -113,6 +114,23 @@ Any non-empty value counts, `0` and `false` included — it's a switch, not a
 boolean. This env var is the *only* way to run without Grok: with it unset, a
 missing or unauthenticated `grok` stops the pipeline exactly like a missing
 `codex` would, rather than quietly shipping with one less reviewer.
+
+## Security scan
+
+Set `SHIPYARD_SECURITY_SCAN=1` and stage 5 gains a fourth reviewer: Mythos,
+pinned to the `mythos` model, scans the integrated diff for security issues
+only — injection, auth gaps, leaked secrets, unsafe data handling, supply
+chain. Its blockers gate the PR like any other stage-5 reviewer's, and every
+repair gets a delta re-scan. Off by default.
+
+```json
+{ "env": { "SHIPYARD_SECURITY_SCAN": "1" } }
+```
+
+Same switch semantics as `SHIPYARD_NO_GROK`: any non-empty value turns it on.
+Once on, an unavailable `mythos` model stops the pipeline instead of skipping
+the scan. If your build doesn't recognise the alias, put the full model ID in
+`agents/mythos.md`.
 
 ## How the roles are confined
 
