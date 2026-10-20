@@ -18,10 +18,13 @@ Five stages, in order. No skipping, no reordering.
 | Sonnet | `sonnet-implementer` | Claude Sonnet 5.5 | write |
 | Grok | `grok-implementer` | grok-4.7, xhigh | write |
 | Grok | `grok-reviewer` | grok-4.7, xhigh | read-only |
+| Mythos | `mythos` | Claude Mythos (opt-in) | read-only |
 
 Every review in this pipeline is **adversarial** — Fable, Astra, Grok and Opus all hunt for reasons to reject. The gate is blockers, not an empty findings list. `EXECUTE AS-IS` / `MERGE AS-IS` / `APPROVE` mean no blockers, not praise. `grok-reviewer` returns no verdict word at all — its blocker list *is* its verdict, because its verdicts ran lenient while its findings ran sharp. Astra wrote the plan and reviews it again in stage 2, and the branch in stage 5; the fresh dispatch is what keeps that honest — a new subagent, a new `codex exec`, none of the planning context.
 
 **Grok is optional, and the env var is the only switch.** Before stage 2, run `printenv SHIPYARD_NO_GROK`. Any non-empty value (use `1`) turns Grok off for this project, which changes exactly three dispatch sites: stage 2 drops `grok-reviewer` (leaving Fable and a fresh Astra), stage 3 routes ROUTINE tasks to `codex` along with the easy ones (HARD still goes to `sonnet-implementer`), stage 5 drops `grok-reviewer`. Say once, in stage 2, that Grok is disabled; every gate stays as it is. With the var unset, a missing or unauthenticated `grok` is a hard stop exactly like a missing `codex` — report it and wait, don't decide for yourself to run without Grok.
+
+**The security scan is opt-in, and the env var is the only switch.** Before stage 2, also run `printenv SHIPYARD_SECURITY_SCAN`. Any non-empty value (use `1`) adds `mythos` to stage 5 as one more enabled reviewer: it is dispatched in the same message as the others, its blockers gate the PR like theirs, and it is re-dispatched as a delta on every repair. Nothing else changes. Say once, in stage 2, that the security scan is enabled. With the var set, a `mythos` dispatch that fails because the model is unavailable is a hard stop exactly like a missing `codex` — report it and wait, never open the PR without the scan.
 
 Every name is a **model**, pinned in `agents/*.md`, and every stage runs on the model named for it — whatever model this session happens to be. You are the orchestrator, not one of the cast: you dispatch, you merge, you resolve conflicts, you talk to the user. Stages 2 and 5 are `fable` dispatches even if this session is already Fable, and stage 4 is an `opus-reviewer` dispatch even if this session is already Opus. Never do a stage's work inline because you happen to share its weights — the fresh context is half the point.
 
@@ -65,7 +68,7 @@ Do **not** use `isolation: "worktree"`. It picks its own path, and you need the 
 
 A task is done only when approved **and** merged.
 
-**5. Branch review — Fable + Astra + Grok.** Once every task is approved *and merged*: dispatch `fable`, `astra` and `grok-reviewer` in one message so they run in parallel, each given the spec, the final plan, the base revision, and the integrated diff. All three are adversarial; verdicts are MERGE AS-IS / MERGE WITH FIXES / DO NOT MERGE, derived from blockers the same way. `MERGE AS-IS` means no blockers.
+**5. Branch review — Fable + Astra + Grok.** Once every task is approved *and merged*: dispatch `fable`, `astra` and `grok-reviewer` in one message so they run in parallel, each given the spec, the final plan, the base revision, and the integrated diff. With `SHIPYARD_SECURITY_SCAN` set, dispatch `mythos` in that same message with the same inputs. All of them are adversarial; verdicts are MERGE AS-IS / MERGE WITH FIXES / DO NOT MERGE, derived from blockers the same way. `MERGE AS-IS` means no blockers.
 
 This stage gates the branch's *final* state, so a verdict dies the moment the diff changes. Do not round-cap stage 5. The repair loop, when any reviewer reports a blocker you accept:
 
@@ -84,6 +87,7 @@ This stage gates the branch's *final* state, so a verdict dies the moment the di
 - Sending a task to any implementer but the one its tag names (`EASY` → `codex`, `ROUTINE` → `grok-implementer`, `HARD` → `sonnet-implementer`; `ROUTINE` → `codex` only when `SHIPYARD_NO_GROK` is set) → the tag exists to pick the model; follow it.
 - Merging a Sonnet worktree without checking the main checkout for stray writes → it has no sandbox; the check is the only gate.
 - Deciding for yourself that Grok is "not needed" → `SHIPYARD_NO_GROK` is the user's switch, not your call.
+- Opening the PR with `SHIPYARD_SECURITY_SCAN` set but no `mythos` pass on the current diff → the scan is a stage-5 gate once enabled; an unavailable model stops the pipeline, it doesn't skip the scan.
 - Merging a worktree branch Opus hasn't approved → not done.
 - Sequential implementer dispatches for independent tasks → wasted wall-clock; one message, many calls.
 - Dispatching an implementer with `isolation: "worktree"` instead of a path you created → the harness picks the location, so you cannot seed it, cannot honour a project's worktree convention, and cannot know what `--sandbox workspace` is actually confining.
