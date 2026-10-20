@@ -35,8 +35,8 @@ reviewer gates actually refuse a write — a green round-trip with a broken gate
 is the one failure that would otherwise look healthy.
 
 If you already keep any of `astra.md`, `fable.md`, `codex.md`,
-`opus-reviewer.md`, `sonnet-implementer.md`, `grok-implementer.md` or
-`grok-reviewer.md` in
+`opus-reviewer.md`, `sonnet-implementer.md`, `grok-implementer.md`,
+`grok-reviewer.md` or `mythos.md` in
 `~/.claude/agents/`, delete them after installing — the plugin ships the same
 names and duplicates are confusing. Shipyard 0.4 and earlier shipped a
 `sol-reviewer` agent; `astra` replaces it, so delete any stale copy of that
@@ -53,7 +53,7 @@ one too.
 | Sonnet | `sonnet-implementer` | Claude Sonnet 5.5 | write |
 | Grok | `grok-implementer` | grok-4.7, xhigh reasoning | write |
 | Grok | `grok-reviewer` | grok-4.7, xhigh reasoning | read-only |
-| Mythos | `mythos` | Claude Mythos (opt-in security scan) | read-only |
+| Mythos | `mythos` | Claude Mythos 5.1 (opt-in security scan) | read-only |
 
 Every name is a model, pinned in the agent definition — frontmatter for the
 Claude agents, a CLI argument for the wrappers. **Your session model
@@ -88,7 +88,7 @@ build doesn't recognise the `fable` or `sonnet` alias, use the full ID
    spawned it. `FIX` (blockers) goes back to the same implementer in the same
    worktree; `APPROVE` (nits allowed) lets the branch merge. A task is done
    only when approved *and* merged.
-5. **Branch review** — Fable, Astra and Grok all attack the integrated diff,
+5. **Branch review** — Fable, Astra and Grok (plus Mythos, if enabled) attack the integrated diff,
    in parallel. Verdict: `MERGE AS-IS` / `MERGE WITH FIXES` / `DO NOT MERGE`,
    derived from blockers. Fixes send the branch back through this stage; the
    PR opens only once every enabled reviewer has an empty blocker list on the
@@ -117,8 +117,8 @@ missing or unauthenticated `grok` stops the pipeline exactly like a missing
 
 ## Security scan
 
-Set `SHIPYARD_SECURITY_SCAN=1` and stage 5 gains a fourth reviewer: Mythos,
-pinned to the `mythos` model, scans the integrated diff for security issues
+Set `SHIPYARD_SECURITY_SCAN=1` and stage 5 gains one more reviewer: Mythos,
+pinned to `claude-mythos-5-1`, scans the integrated diff for security issues
 only — injection, auth gaps, leaked secrets, unsafe data handling, supply
 chain. Its blockers gate the PR like any other stage-5 reviewer's, and every
 repair gets a delta re-scan. Off by default.
@@ -128,9 +128,9 @@ repair gets a delta re-scan. Off by default.
 ```
 
 Same switch semantics as `SHIPYARD_NO_GROK`: any non-empty value turns it on.
-Once on, an unavailable `mythos` model stops the pipeline instead of skipping
-the scan. If your build doesn't recognise the alias, put the full model ID in
-`agents/mythos.md`.
+Once on, an unavailable Mythos model stops the pipeline instead of skipping
+the scan. The agent pins the full ID because the bare `mythos` alias doesn't
+resolve.
 
 ## How the roles are confined
 
