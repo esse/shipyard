@@ -25,7 +25,7 @@ context, and are told to distrust both.
 ## Requires
 
 - The [Codex CLI](https://github.com/openai/codex) on `PATH` and authenticated
-  (`codex login`), 0.147 or newer. Two agents shell out to `codex exec`, and
+  (`codex login`), 0.147 or newer. Three agents shell out to `codex exec`, and
   one of them writes the plan, so Codex is required from stage 1 onwards.
   `--full-auto` is gone; Luna uses `--sandbox workspace-write -c approval_policy="never"`
   (`--approve-for-me` conflicts with `--sandbox` since 0.153).
@@ -43,30 +43,33 @@ the exact delegation form the wrappers use, and asserts that the read-only
 reviewer gates actually refuse a write — a green round-trip with a broken gate
 is the one failure that would otherwise look healthy.
 
-If you already keep any of `astra.md`, `fable.md`, `opus.md`, `codex.md`,
-`opus-reviewer.md`, `sonnet-reviewer.md`, `sonnet-implementer.md`,
+If you already keep any of `astra.md`, `sol.md`, `fable.md`, `opus.md`,
+`codex.md`, `opus-reviewer.md`, `simplifier.md`, `sonnet-reviewer.md`,
+`sonnet-implementer.md`,
 `grok-implementer.md`, `bonsai-implementer.md`, `grok-reviewer.md` or
 `mythos.md` in
 `~/.claude/agents/`, delete them after installing — the plugin ships the same
 names and duplicates are confusing. Shipyard 0.4 and earlier shipped a
-`sol-reviewer` agent; `astra` replaces it, so delete any stale copy of that
-one too.
+`sol-reviewer` agent (unrelated to the new `sol` agent); `astra` replaces it,
+so delete any stale copy of that one too.
 
 ## The cast
 
 | Name | Agent | Model | Access | Used in |
 | --- | --- | --- | --- | --- |
 | Astra | `astra` | gpt-6-astra, medium reasoning | read-only | shipyard: plan, plan + branch review |
+| Sol | `sol` | gpt-6.1-sol, xhigh reasoning | read-only | shipyard: test audit |
 | Fable | `fable` | Claude Fable | read-only | both: plan + branch review |
 | Opus | `opus` | Claude Opus | read-only | boatyard: plan, plan + branch review |
-| Opus | `opus-reviewer` | Claude Opus | read-only | shipyard: task review |
+| Opus | `opus-reviewer` | Claude Opus | read-only | shipyard: task review; both: polish-pass review |
+| Simplifier | `simplifier` | Claude Opus | read-only | both: simplify; boatyard: test audit |
 | Sonnet | `sonnet-reviewer` | Claude Sonnet | read-only | boatyard: task review |
 | Grok | `grok-reviewer` | grok-4.7, xhigh reasoning | read-only | shipyard: plan + branch review |
 | Bonsai | `bonsai-implementer` | Ternary-Bonsai-2-27B via `claude-local` (opt-in) | write, edits only | both: `TRIVIAL` tasks |
 | Luna | `codex` | gpt-6-luna, max reasoning | write | both: `EASY` tasks, plus fallbacks |
 | Grok | `grok-implementer` | grok-4.7, xhigh reasoning | write | both: `ROUTINE` tasks |
 | Sonnet | `sonnet-implementer` | Claude Sonnet 5.5 | write | shipyard: `HARD` tasks |
-| Mythos | `mythos` | Claude Mythos 5.1 (opt-in security scan) | read-only | both: branch review |
+| Mythos | `mythos` | Claude Mythos 5.2 (opt-in security scan) | read-only | both: branch review |
 
 Every name is a model, pinned in the agent definition — frontmatter for the
 Claude agents, a CLI argument for the wrappers. **Your session model
@@ -78,7 +81,8 @@ resolves conflicts, and talks to you.
 Swap the model IDs in `agents/*.md` for whatever your accounts have. If your
 build doesn't recognise the `fable` or `sonnet` alias, use the full ID
 `claude-fable-5` or `claude-sonnet-5-5`;
-`agents/astra.md` pins `gpt-6-astra` on the Codex side.
+`agents/astra.md` pins `gpt-6-astra` on the Codex side, and `agents/sol.md`
+pins `gpt-6.1-sol`.
 
 ## Triage: shipyard or boatyard
 
@@ -128,11 +132,26 @@ The full shipyard:
    spawned it. `FIX` (blockers) goes back to the same implementer in the same
    worktree; `APPROVE` (nits allowed) lets the branch merge. A task is done
    only when approved *and* merged.
+
+   **Polish (4b)** — Sol lists fixes for tests added or changed on the branch,
+   against `skills/shipping-plans-with-agents/test-audit.md`; skip the test-audit
+   pass only when no tests changed, and say so in one line. Simplifier then lists
+   simplifications for changed code. Run each applicable lister even if its list
+   is empty; an empty list skips only the apply step, and that is said in one
+   line. Luna applies each non-empty list in a fresh worktree as one commit,
+   Opus judges it against the list; `FIX` goes back to the same Luna for one fix
+   round and another review before it merges. A pass that won't converge after
+   that round, or later causes a stage-5 blocker or test failure, may be dropped
+   with a one-line note; task commits never are. Stage-5 reviewers receive the
+   polish fix lists and each pass's status as part of the plan.
 5. **Branch review** — Fable, Astra and Grok (plus Mythos, if enabled) attack the integrated diff,
    in parallel. Verdict: `MERGE AS-IS` / `MERGE WITH FIXES` / `DO NOT MERGE`,
    derived from blockers. Fixes send the branch back through this stage; the
    PR opens only once every enabled reviewer has an empty blocker list on the
-   diff as it then stands.
+   diff as it then stands. Once stage 5 is clear, the session runs the project's
+   full test suite. A failure goes through the same repair loop, and the PR
+   opens only when the reviewers are clear and the suite is green on the same
+   diff. If the project has no suite, the session says so in one line.
 
 The full stage-by-stage instructions live in
 `skills/shipping-plans-with-agents/SKILL.md`, which your session loads on its
@@ -151,11 +170,15 @@ don't, at most two plan-review rounds, delta re-reviews after every fix.
 | 2. Plan review | Fable, fresh Astra, Grok | Fable, fresh Opus |
 | 3. Implement | Bonsai / Luna / Grok / Sonnet by tag | Bonsai / Luna / Grok by tag |
 | 4. Task review | Opus | Sonnet |
+| 4b. Polish | Sol (test audit), Simplifier (simplify), Opus judges | Simplifier (both), Opus judges |
 | 5. Branch review | Fable, Astra, Grok (+ Mythos) | fresh Opus, Fable (+ Mythos) |
+| 5. Final tests | full suite, run by the session | same |
 
 - **The Opus reviews are fresh dispatches.** They get the spec and the plan or
   diff, never the planning run's context, so the reviewer doesn't share the
   author's blind spots.
+- **Polish review in boatyard.** Opus (`opus-reviewer`) judges the polish
+  commits here too.
 - **A `HARD` task means the triage was wrong.** If the plan, a plan reviewer or
   a branch fix calls a task `HARD`, boatyard stops, says which task and why, and
   restarts in shipyard from stage 1. Work already merged stays on the branch.
@@ -207,7 +230,7 @@ worktree is refused.
 ## Security scan
 
 Set `SHIPYARD_SECURITY_SCAN=1` and stage 5 gains one more reviewer: Mythos,
-pinned to `claude-mythos-5-1`, scans the integrated diff for security issues
+pinned to `claude-mythos-5-2`, scans the integrated diff for security issues
 only — injection, auth gaps, leaked secrets, unsafe data handling, supply
 chain. Its blockers gate the PR like any other stage-5 reviewer's, and every
 repair gets a delta re-scan. Off by default.
@@ -282,10 +305,10 @@ simple enough for the trade to be worth it.
 
 Everything is markdown. Common edits:
 
-- **No Codex account?** Point `agents/codex.md` and `agents/astra.md` at a
-  different CLI, or replace them with plain Claude subagents — the pipeline
-  shape survives, though planning and two of the review seats then come from
-  the same lab.
+- **No Codex account?** Point `agents/codex.md`, `agents/astra.md` and
+  `agents/sol.md` at a different CLI, or replace them with plain Claude
+  subagents — the pipeline shape survives, though planning and two of the
+  review seats then come from the same lab.
 - **Solo tasks.** Stage 3 with one task is just "implement in a worktree". The
   review gates still apply.
 - **Different verdict vocabulary.** The skill's red-flags list keys off the
