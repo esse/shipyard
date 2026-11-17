@@ -156,10 +156,9 @@ restatement of the expectation. Then:
 
 - **Both CLIs pass** — say the pipeline can run all five stages.
 - **Codex fails** — stages 1, 2, 3, 4b and 5 are blocked; the pipeline cannot run.
-  Astra writes the plan, so this fails at stage 1, before anything else. If only
-  Sol's check fails, the shipyard test-audit pass (stage 4b) is blocked; boatyard
-  does not use Sol. Do not offer to substitute another model for Astra, Sol or
-  Luna.
+  Astra writes the plan, so this fails at stage 1, before anything else. Do not
+  offer to substitute another model for Astra, Sol or Luna.
+- **Only Sol's check fails** — the shipyard test-audit pass (stage 4b) is blocked; boatyard and every other stage still run.
 - **Grok fails while enabled** — stages 2, 3 and 5 are blocked. Name
   `SHIPYARD_NO_GROK=1` as the user's choice to run without Grok, and do not set
   it for them.
