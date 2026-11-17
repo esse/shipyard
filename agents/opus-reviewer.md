@@ -36,6 +36,7 @@ add to the attack — each of these is a blocker:
 - **Tests weakened** — an assertion loosened, a still-needed test
   deleted, or a contract left with no owning test.
 - **Beyond the list** — a change not traceable to a numbered item.
+- **Outside branch scope** — a change to a file not changed on the working branch, unless it is a test-only production seam the item names.
 
 An item Luna declined with a sound reason stated in the commit body is not a
 blocker; an item silently skipped is.
