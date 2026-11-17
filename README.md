@@ -26,12 +26,15 @@ context, and are told to distrust both.
 
 - The [Codex CLI](https://github.com/openai/codex) on `PATH` and authenticated
   (`codex login`), 0.147 or newer. Three agents shell out to `codex exec`, and
-  one of them writes the plan, so Codex is required from stage 1 onwards.
+  both Grok agents use it for their Terra fallback; one of the first three
+  writes the plan, so Codex is required from stage 1 onwards.
   `--full-auto` is gone; Luna uses `--sandbox workspace-write -c approval_policy="never"`
   (`--approve-for-me` conflicts with `--sandbox` since 0.153).
-- The Grok CLI (`grok`) on `PATH` and authenticated (`grok login`). Two roles
-  shell out to `grok --prompt-file`. Required unless you switch Grok off — see
-  [Turning Grok off](#turning-grok-off).
+- The Grok CLI (`grok`) on `PATH` and authenticated (`grok login`) for the
+  primary path. Two roles try `grok --prompt-file` first, then use Terra
+  through the Codex CLI on eligible pre-work failures. A Grok sandbox that
+  fails to apply is still a hard stop. `SHIPYARD_NO_GROK` skips both roles and
+  the fallback — see [Turning Grok off](#turning-grok-off).
 - Git, for the worktree isolation used during implementation.
 - Optional: a `claude-local` launcher on `PATH`, a Claude Code wrapper pointed
   at a self-hosted Bonsai model. Only needed if you turn on the
@@ -68,6 +71,7 @@ so delete any stale copy of that one too.
 | Bonsai | `bonsai-implementer` | Ternary-Bonsai-2-27B via `claude-local` (opt-in) | write, edits only | both: `TRIVIAL` tasks |
 | Luna | `codex` | gpt-6-luna, max reasoning | write | both: `EASY` tasks, plus fallbacks |
 | Grok | `grok-implementer` | grok-4.7, xhigh reasoning | write | both: `ROUTINE` tasks |
+| Terra | `grok-implementer` / `grok-reviewer` fallback | gpt-6.1-terra, high reasoning | same access as the Grok role | on eligible Grok pre-work failures |
 | Sonnet | `sonnet-implementer` | Claude Sonnet 5.5 | write | shipyard: `HARD` tasks |
 | Mythos | `mythos` | Claude Mythos 5.2 (opt-in security scan) | read-only | both: branch review |
 
@@ -204,9 +208,11 @@ the switch only moves `ROUTINE` tasks to Luna. The stage gates are unchanged. In
 ```
 
 Any non-empty value counts, `0` and `false` included — it's a switch, not a
-boolean. This env var is the *only* way to run without Grok: with it unset, a
-missing or unauthenticated `grok` stops the pipeline exactly like a missing
-`codex` would, rather than quietly shipping with one less reviewer.
+boolean. With the var unset, either Grok role falls back to Terra
+(`gpt-6.1-terra`, high, through Codex) if Grok is missing or fails before
+producing work. The wrapper stops if Terra also fails, the Grok sandbox was
+not enforced, or a failed implementer attempt left a dirty worktree, rather
+than quietly shipping with one less reviewer.
 
 ## Local Bonsai tier
 
