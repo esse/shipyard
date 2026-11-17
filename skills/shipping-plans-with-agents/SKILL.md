@@ -1,11 +1,11 @@
 ---
 name: shipping-plans-with-agents
-description: Use when a spec, design, or implementation plan is ready to build and the work will be split across subagents — triage into shipyard or boatyard, planning, plan review, parallel implementation in worktrees, per-task review, branch review, and PR.
+description: Use when a spec, design, or implementation plan is ready to build and the work will be split across subagents — triage into shipyard or boatyard, planning, plan review, parallel implementation in worktrees, per-task review, test-audit and simplify polish passes, branch review, a final test run, and PR.
 ---
 
 # Shipping Plans With Agents
 
-Five stages, in order. No skipping, no reordering.
+Five stages, in order, with a polish stage (4b) between 4 and 5 and a final test run closing 5. No skipping, no reordering.
 
 ## Stage 0 — triage: shipyard or boatyard
 
@@ -21,14 +21,16 @@ When unsure, it is shipyard. An explicit "use shipyard" / "use boatyard" from th
 | Name | Agent | Model | Access |
 |---|---|---|---|
 | Astra | `astra` | gpt-6-astra, medium | read-only |
+| Sol | `sol` | gpt-6.1-sol, xhigh | read-only |
 | Fable | `fable` | Claude Fable | read-only |
 | Luna | `codex` | gpt-6-luna, max | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
+| Simplifier | `simplifier` | Claude Opus | read-only |
 | Sonnet | `sonnet-implementer` | Claude Sonnet 5.5 | write |
 | Grok | `grok-implementer` | grok-4.7, xhigh | write |
 | Bonsai | `bonsai-implementer` | Ternary-Bonsai-2-27B via `claude-local` (opt-in) | write, edits only |
 | Grok | `grok-reviewer` | grok-4.7, xhigh | read-only |
-| Mythos | `mythos` | Claude Mythos 5.1 (opt-in) | read-only |
+| Mythos | `mythos` | Claude Mythos 5.2 (opt-in) | read-only |
 
 Every review in this pipeline is **adversarial** — Fable, Astra, Grok, Opus and Mythos all hunt for reasons to reject. The gate is blockers, not an empty findings list. `EXECUTE AS-IS` / `MERGE AS-IS` / `APPROVE` mean no blockers, not praise. `grok-reviewer` returns no verdict word at all — its blocker list *is* its verdict, because its verdicts ran lenient while its findings ran sharp. Astra wrote the plan and reviews it again in stage 2, and the branch in stage 5; the fresh dispatch is what keeps that honest — a new subagent, a new `codex exec`, none of the planning context.
 
@@ -38,17 +40,17 @@ Every review in this pipeline is **adversarial** — Fable, Astra, Grok, Opus an
 
 **The security scan is opt-in, and the env var is the only switch.** Before stage 2, also run `printenv SHIPYARD_SECURITY_SCAN`. Any non-empty value (use `1`) adds `mythos` to stage 5 as one more enabled reviewer: it is dispatched in the same message as the others, its blockers gate the PR like theirs, and it is re-dispatched as a delta on every repair. Nothing else changes. Say once, in stage 2, that the security scan is enabled. With the var set, a `mythos` dispatch that fails because the model is unavailable is a hard stop exactly like a missing `codex` — report it and wait, never open the PR without the scan.
 
-Every name is a **model**, pinned in `agents/*.md`, and every stage runs on the model named for it — whatever model this session happens to be. You are the orchestrator, not one of the cast: you dispatch, you merge, you resolve conflicts, you talk to the user. Stages 2 and 5 are `fable` dispatches even if this session is already Fable, and stage 4 is an `opus-reviewer` dispatch even if this session is already Opus. Never do a stage's work inline because you happen to share its weights — the fresh context is half the point.
+Every name is a **model**, pinned in `agents/*.md`, and every stage runs on the model named for it — whatever model this session happens to be. You are the orchestrator, not one of the cast: you dispatch, you merge, you resolve conflicts, you talk to the user. Stages 2 and 5 are `fable` dispatches even if this session is already Fable, and stage 4 is an `opus-reviewer` dispatch even if this session is already Opus. In stage 4b, `sol` / `simplifier` are lister dispatches and `opus-reviewer` is the judge dispatch. The final test run is the one step the orchestrator runs itself. Never do a stage's work inline because you happen to share its weights — the fresh context is half the point.
 
-Astra and Luna shell out to the Codex CLI; the two Grok agents shell out to the Grok CLI. If either binary is missing from PATH or unauthenticated, the agent reports the error and stops — don't route around it by doing the work yourself. `/shipyard:doctor` checks both CLIs end to end, including whether the read-only gates really deny; run it when a dispatch fails for a reason that looks environmental rather than about the task.
+Astra, Sol and Luna shell out to the Codex CLI; the two Grok agents shell out to the Grok CLI. If either binary is missing from PATH or unauthenticated, the agent reports the error and stops — don't route around it by doing the work yourself. `/shipyard:doctor` checks both CLIs end to end, including whether the read-only gates really deny; run it when a dispatch fails for a reason that looks environmental rather than about the task.
 
-**Access is enforced differently per agent, and the flags are load-bearing.** Fable, Opus and Mythos are native Claude subagents held read-only by their instructions alone — their tool lists include `Bash`, so nothing mechanical stops them. Astra is confined by `--sandbox read-only`, in every job including stage 1's planning; Luna by `--sandbox workspace-write` (headless via `approval_policy="never"`); `grok-implementer` by `--sandbox workspace`, which refuses writes to the repository outside its worktree while still allowing `~/.grok` and the temp dirs. `sonnet-implementer` has no sandbox at all: it is a native Claude subagent held to its worktree by its instructions, so after every Sonnet task run `git status --short` in the main checkout and treat any change you didn't make as a breach — that worktree is untrusted and does not merge. `grok-reviewer` is confined twice over, by `--sandbox read-only` and by four deny rules. Both grok roles need `--deny MCPTool` on top of any sandbox, because MCP servers are separate processes a sandbox does not cover.
+**Access is enforced differently per agent, and the flags are load-bearing.** Fable, Opus, Simplifier and Mythos are native Claude subagents held read-only by their instructions alone — their tool lists include `Bash`, so nothing mechanical stops them. Astra is confined by `--sandbox read-only`, in every job including stage 1's planning; Sol by `--sandbox read-only`; Luna by `--sandbox workspace-write` (headless via `approval_policy="never"`); `grok-implementer` by `--sandbox workspace`, which refuses writes to the repository outside its worktree while still allowing `~/.grok` and the temp dirs. `sonnet-implementer` has no sandbox at all: it is a native Claude subagent held to its worktree by its instructions, so after every Sonnet task run `git status --short` in the main checkout and treat any change you didn't make as a breach — that worktree is untrusted and does not merge. `grok-reviewer` is confined twice over, by `--sandbox read-only` and by four deny rules. Both grok roles need `--deny MCPTool` on top of any sandbox, because MCP servers are separate processes a sandbox does not cover.
 
 One caveat that reaches you, not just the agents: a built-in grok sandbox profile that *cannot* be applied only warns and then runs unconfined. Both grok agents are required to detect that and stop, but detection is after the fact — so if one reports it, treat that worktree as untrusted and don't merge it. Never drop one of those flags to "simplify" a command.
 
 None of them sees this conversation. Every dispatch prompt must be self-contained: the goal, the constraints the user stated, the files in play, the definition of done.
 
-**Self-contained means paths and anchors, not pasted files.** The four CLI wrappers (`astra`, `codex`, `grok-reviewer`, `grok-implementer`) are Claude subagents that spend Claude tokens on everything they read, and each one starts with a cold context. Give them absolute paths and `file:line` anchors and let the CLI read the tree on its own provider's budget — that is what the read-only and workspace sandboxes are for. Paste only what is not on disk: diffs, `git log`, test output, a previous review. A brief that quotes file bodies at a wrapper buys the same bytes twice, at the higher price, and can hand it a stale copy.
+**Self-contained means paths and anchors, not pasted files.** The five CLI wrappers (`astra`, `sol`, `codex`, `grok-reviewer`, `grok-implementer`) are Claude subagents that spend Claude tokens on everything they read, and each one starts with a cold context. Give them absolute paths and `file:line` anchors and let the CLI read the tree on its own provider's budget — that is what the read-only and workspace sandboxes are for. Paste only what is not on disk: diffs, `git log`, test output, a previous review. A brief that quotes file bodies at a wrapper buys the same bytes twice, at the higher price, and can hand it a stale copy.
 
 **Key off the blocker list, not the verdict word.** Reviewers classify findings as blocker / risk / nit. If `blockers` is empty, that review has passed — even if the model wrote `EXECUTE WITH FIXES`, `MERGE WITH FIXES`, or `FIX` above only nits and risks. Say so when you override a mislabeled verdict. Do not auto-convert `REWORK PLAN` or `DO NOT MERGE`; those stop the pipeline even when the list is messy. Grok has no verdict line to override, and no way to say `REWORK PLAN` — a structural objection from it arrives as a blocker, which gates the same way.
 
@@ -80,7 +82,25 @@ Do **not** use `isolation: "worktree"`. It picks its own path, and you need the 
 
 A task is done only when approved **and** merged.
 
-**5. Branch review — Fable + Astra + Grok.** Once every task is approved *and merged*: dispatch `fable`, `astra` and `grok-reviewer` in one message so they run in parallel, each given the spec, the final plan, the base revision, and the integrated diff. With `SHIPYARD_SECURITY_SCAN` set, dispatch `mythos` in that same message with the same inputs. All of them are adversarial; verdicts are MERGE AS-IS / MERGE WITH FIXES / DO NOT MERGE, derived from blockers the same way. `MERGE AS-IS` means no blockers.
+**4b. Polish — test audit, then simplify.** Once every task is approved and merged, run these passes in order.
+
+**Test audit.** Scope is the test files added or changed in `git diff --name-only <base>...HEAD`, plus production code those tests reach that exists only to serve tests. Identify test files from the project's test-runner config or conventional test paths; when unsure, include the file. If no tests changed, skip this pass and tell the user in one line. The lister is `sol` in shipyard and `simplifier` (`test-audit` job) in boatyard. Its brief carries the absolute main-checkout path, base revision, test-file list, and absolute path of `test-audit.md` next to this file.
+
+**Simplify.** Scope is production and test code changed on the branch. The lister is `simplifier` (`simplify` job); its brief carries the absolute main-checkout path, base revision, and all changed files from `git diff --name-only <base>...HEAD`.
+
+Both listers are read-only and return exactly `findings:` with numbered `path/to/file:LINE — what to change, and why (rubric item or simplify rule)` entries, or the single line `no findings`. With fixes, they may follow the list with `notes:`; with notes but no fixes, they print `no findings` followed by a `notes:` block. Production bug fixes are out of scope: listers report them under `notes:`, the orchestrator relays them to the user, and they are not applied.
+
+Test audit merges before simplify starts. For each non-empty fix list, follow these steps; if the list is empty, the pass is done and the orchestrator says so in one line:
+
+1. Create and seed a fresh worktree from the working branch as in stage 3, at `<root>/<repo>-test-audit` or `<root>/<repo>-simplify`.
+2. Dispatch `codex` (Luna) with the whole fix list. Polish passes always go to `codex`, regardless of task tags or `SHIPYARD_NO_GROK`.
+3. Luna applies every item it agrees with and commits one commit for the pass. It may decline an item that would change behaviour or delete a still-needed test; the brief asks Luna to name each declined item and its reason in the commit body.
+4. `opus-reviewer` judges the commit against the fix list. The brief identifies a stage-4b polish-pass commit and includes the list. Its attack covers changed behaviour, weakened tests or deleted still-needed tests, and changes beyond the list. A declined item with a sound reason is not a blocker; a silently skipped item is. FIX goes back to the same `codex` in the same worktree, then a re-review. If a fix round adds commits, squash them into one before merging.
+5. APPROVE means merge with `git merge --ff-only`. If Opus still says FIX after one fix round, the orchestrator may drop the pass and tell the user in one line. A merged polish commit may be reverted if it later causes a stage-5 blocker or test failure; for a test failure, revert only if it reproduces with that commit and not without it. Tell the user in one line; if a revert conflicts, stop and ask the user. A revert changes the diff, so stage 5 gets a delta re-review. After a merge or drop, remove that pass's worktree and branch. Task commits are never dropped this way.
+
+Keep both polish fix lists for stage 5. Every stage-5 brief, in the first pass and in each delta, carries each list with its status (applied, with any declined items; skipped; dropped; or reverted), labelled as authorised stage-4b scope. Changes traceable to a numbered polish item remain in scope and are still attacked for correctness.
+
+**5. Branch review — Fable + Astra + Grok.** Once every task is approved *and merged* and stage 4b is done: dispatch `fable`, `astra` and `grok-reviewer` in one message so they run in parallel, each given the spec, the final plan, the base revision, and the integrated diff, including the polish commits. With `SHIPYARD_SECURITY_SCAN` set, dispatch `mythos` in that same message with the same inputs. All of them are adversarial; verdicts are MERGE AS-IS / MERGE WITH FIXES / DO NOT MERGE, derived from blockers the same way. `MERGE AS-IS` means no blockers.
 
 This stage gates the branch's *final* state, so a verdict dies the moment the diff changes. Do not round-cap stage 5. The repair loop, when any reviewer reports a blocker you accept:
 
@@ -88,7 +108,9 @@ This stage gates the branch's *final* state, so a verdict dies the moment the di
 2. `opus-reviewer` on that commit, with the findings as the step it implements. FIX goes back to the same agent; APPROVE lets you merge it into the branch.
 3. Regenerate the integrated diff and **re-dispatch every enabled reviewer as a delta**, not only the ones who complained: previous review, new diff, what was fixed. Not a first-pass re-read of accepted text.
 
-**The PR opens only when every enabled reviewer has an empty blocker list on the current diff.** Nothing else clears the gate. `MERGE WITH FIXES` (non-empty blockers) obliges you to apply the fixes and loop. Nits on a `MERGE AS-IS` (or a mislabeled `MERGE WITH FIXES` with empty blockers) are reported once and do not block. If you think a blocker should be declined, the pipeline *stops there*: report it to the user and wait. Agreeing that a finding is wrong does not convert a verdict, so say plainly that they have two ways to resume — tell you to re-dispatch with that finding excluded from the gate, or tell you to bypass Shipyard and open the PR as it stands. Never pick either one for them. That bypass is for declining a blocker, not for escaping nits.
+**Final test run.** Once every enabled reviewer has an empty blocker list, the orchestrator itself runs the project's full test suite on the working branch, using the command documented in the project's CLAUDE.md / AGENTS.md / README / CI config. A failure is a blocker. It goes through the repair loop above (repair, review, delta re-review of every enabled stage-5 reviewer), then the suite runs again. A failure caused by a polish commit may instead be resolved by reverting that commit, but only if it reproduces with the commit and not without it; follow the revert rules in stage 4b, then delta re-review and rerun the suite. If the project has no test suite, tell the user in one line; that is not a pass to claim silently.
+
+**The PR opens only when every enabled reviewer has an empty blocker list on the current diff and the full test suite has passed on that same diff.** Nothing else clears the gate. `MERGE WITH FIXES` (non-empty blockers) obliges you to apply the fixes and loop. Nits on a `MERGE AS-IS` (or a mislabeled `MERGE WITH FIXES` with empty blockers) are reported once and do not block. If you think a blocker should be declined, the pipeline *stops there*: report it to the user and wait. Agreeing that a finding is wrong does not convert a verdict, so say plainly that they have two ways to resume — tell you to re-dispatch with that finding excluded from the gate, or tell you to bypass Shipyard and open the PR as it stands. Never pick either one for them. That bypass is for declining a blocker, not for escaping nits.
 
 ## Red flags
 
@@ -108,6 +130,10 @@ This stage gates the branch's *final* state, so a verdict dies the moment the di
 - Folding a blocker whose `file:line` you never opened → the citation is the finding; one that points nowhere is a hallucination, not a gate.
 - A wrapper whose result is "the CLI is running in the background, I will wait" → its turn already ended and nothing collected the run. Do not re-dispatch it: find the PID, arm a waiter that *exits* (`Bash` with `run_in_background` and `until ! kill -0 <PID> 2>/dev/null; do sleep 10; done`), and `SendMessage` the same agent to collect and commit when it fires.
 - Opening the PR without the stage-5 branch review → the per-task reviews never saw the integrated diff.
+- Opening the PR without stage 4b's two passes → each lister runs, except skip test audit only when no tests changed; skip an apply step only for an empty list, saying each skip in one line.
+- Dispatching `sol` in boatyard → boatyard uses `simplifier` for test audit; the cast is per mode.
+- Skipping the final full test run, or opening the PR on a red or unrun suite → reviewers must be clear and the suite green on the same diff.
+- Letting a lister or the polish judge edit files → they list and judge; `codex` applies.
 - Opening the PR on a diff that changed after the last stage-5 pass → the verdict you are citing was about a different branch.
 - Opening the PR while a stage-5 reviewer still has blockers → nits do not block; blockers do.
 - Writing the plan inline instead of dispatching `astra`, or a branch review inline instead of dispatching `fable` and `astra` → wrong model, and no fresh context.
