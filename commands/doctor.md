@@ -11,7 +11,7 @@ each result, and never fix anything — this command diagnoses.
 Do the work in a throwaway directory so nothing touches the user's tree:
 `d=$(mktemp -d)` in the same Bash call that uses it, and remove it after.
 
-## Codex (Astra, Luna)
+## Codex (Astra, Sol, Luna)
 
 1. **On PATH** — `command -v codex`.
 2. **Authenticated** — `codex login status`. Anything other than a logged-in
@@ -63,6 +63,15 @@ Do the work in a throwaway directory so nothing touches the user's tree:
    ```bash
    d=$(mktemp -d) && printf 'Reply with just: DONE\n' > "$d/p.md" \
      && cd "$d" && codex exec --model gpt-6-astra -c model_reasoning_effort="low" \
+       --sandbox read-only --skip-git-repo-check - < "$d/p.md" \
+     ; echo "exit=$?"; rm -rf "$d"
+   ```
+
+6. **Sol's read-only profile accepted** — same form, Sol's model:
+
+   ```bash
+   d=$(mktemp -d) && printf 'Reply with just: DONE\n' > "$d/p.md" \
+     && cd "$d" && codex exec --model gpt-6.1-sol -c model_reasoning_effort="low" \
        --sandbox read-only --skip-git-repo-check - < "$d/p.md" \
      ; echo "exit=$?"; rm -rf "$d"
    ```
@@ -146,9 +155,11 @@ One line per check: `PASS` / `FAIL` / `SKIP` with the observed evidence, not a
 restatement of the expectation. Then:
 
 - **Both CLIs pass** — say the pipeline can run all five stages.
-- **Codex fails** — stages 1, 2, 3 and 5 are blocked; the pipeline cannot run.
-  Astra writes the plan, so this fails at stage 1, before anything else. Do not
-  offer to substitute another model for Astra or Luna.
+- **Codex fails** — stages 1, 2, 3, 4b and 5 are blocked; the pipeline cannot run.
+  Astra writes the plan, so this fails at stage 1, before anything else. If only
+  Sol's check fails, the shipyard test-audit pass (stage 4b) is blocked; boatyard
+  does not use Sol. Do not offer to substitute another model for Astra, Sol or
+  Luna.
 - **Grok fails while enabled** — stages 2, 3 and 5 are blocked. Name
   `SHIPYARD_NO_GROK=1` as the user's choice to run without Grok, and do not set
   it for them.
