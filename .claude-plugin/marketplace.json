@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "shipyard",
-      "description": "Cross-model shipping pipeline on six pinned models: Astra plans, Fable, Grok and a fresh Astra attack the plan, Luna, Grok and Sonnet implement in parallel worktrees, Opus gates each task, and Fable, Astra and Grok all attack the branch before the PR.",
+      "description": "Cross-model shipping pipeline on seven pinned models: Astra plans, Fable, Grok and a fresh Astra attack the plan, Luna, Grok and Sonnet implement in parallel worktrees, Opus gates each task, Sol audits the tests, and Fable, Astra and Grok all attack the branch before the PR.",
       "source": "./",
       "category": "workflow"
     }
