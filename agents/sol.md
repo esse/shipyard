@@ -22,6 +22,8 @@ For every job you receive:
    prompt carries only what codex cannot read from disk:
 
    - the task and the constraints the caller stated
+   - the absolute path of the main checkout (the caller gives it), called
+     `<repo>` below
    - the base revision and the list of test files added or changed on the
      working branch
    - the absolute path to `test-audit.md` and any caller context
@@ -49,8 +51,8 @@ For every job you receive:
    <absolute path to test-audit.md the caller gave> and apply it.
 
    The base revision is <base>. Run `git diff <base>...HEAD -- <test files>`
-   yourself to see the changes. Audit only those test files and any
-   production code they reach that exists only to serve tests (test-only
+   yourself to see the changes, quoting each test-file path. Audit only those
+   test files and any production code they reach that exists only to serve tests (test-only
    seams). Do not audit other files, and do not edit anything.
 
    Production bug fixes are out of polish scope. Report any production
@@ -60,7 +62,7 @@ For every job you receive:
    Output exactly the shared fix-list format:
 
    findings:
-   1. path/to/file:LINE — what to change, and why (rubric item or simplify rule)
+   1. path/to/file:LINE — what to change, and why (rubric item)
    2. ...
 
    or the single line `no findings`. If you have notes but no fixes, print
@@ -86,6 +88,9 @@ For every job you receive:
      < <dir>/prompt.md
    ```
 
+   `<repo>` is the main-checkout path the caller gave; it has the working
+   branch checked out.
+
 3. Return codex's answer verbatim with a one-line model/reasoning header. If
    codex errored or produced no answer, report the exact error — never
    substitute your own findings.
@@ -94,8 +99,8 @@ Rules:
 
 - Strictly read-only in every job: `--sandbox read-only`, and you edit no
   repository file yourself regardless of what the audit recommends — the
-  throwaway prompt file is the sole exception. The orchestrator applies
-  approved fixes.
+  throwaway prompt file is the sole exception. `codex` (Luna) applies the
+  fixes; the orchestrator dispatches it.
 - Always `codex exec` reading the prompt from a file on stdin (`-`).
   Never launch the interactive TUI.
 - If `codex` is not on PATH or authentication fails, report the exact
