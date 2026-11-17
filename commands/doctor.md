@@ -85,7 +85,17 @@ expected rather than a fault.
 1. **On PATH** — `command -v grok`.
 2. **Authenticated, and grok-4.7 available** — `grok models`. Fail if the model
    the agents pin is absent from the list.
-3. **Delegation round-trip**, the implementer's exact form:
+3. **Terra fallback available** — the read-only fallback form; pass if the
+   command returns `DONE`:
+
+   ```bash
+   d=$(mktemp -d) && printf 'Reply with just: DONE\n' > "$d/p.md" \
+     && cd "$d" && codex exec --model gpt-6.1-terra -c model_reasoning_effort="low" \
+       --sandbox read-only --skip-git-repo-check - < "$d/p.md" \
+     ; echo "exit=$?"; rm -rf "$d"
+   ```
+
+4. **Delegation round-trip**, the implementer's exact form:
 
    ```bash
    d=$(mktemp -d) && printf 'Create ok.txt containing OK here, then reply with just: DONE\n' > "$d/p.md" \
@@ -95,7 +105,7 @@ expected rather than a fault.
    ```
 
    Same pass condition: `DONE` returned and `ok.txt` present.
-4. **Sandbox actually enforced** — after that run, the last event in
+5. **Sandbox actually enforced** — after that run, the last event in
    `~/.grok/sessions/sandbox-events.jsonl` must be `ProfileApplied` with
    `"enforced": true`. A profile that failed to apply only warns, so this is the
    check that catches it:
@@ -104,7 +114,7 @@ expected rather than a fault.
    tail -1 ~/.grok/sessions/sandbox-events.jsonl
    ```
 
-5. **The reviewer's read-only gate really denies** — the security-critical one.
+6. **The reviewer's read-only gate really denies** — the security-critical one.
    Run from the project directory, with the reviewer's exact flags, as one
    command so the temp path stays in scope:
 
@@ -121,7 +131,7 @@ expected rather than a fault.
    delete it and report a failure loudly: the reviewer is not read-only, so
    stage 2 and stage 5 have no gate.
 
-6. **MCP is denied** — if `grok mcp list` shows any enabled server, confirm the
+7. **MCP is denied** — if `grok mcp list` shows any enabled server, confirm the
    deny rule covers it by asking grok, with the reviewer flags above, to
    actually *call* one of its MCP tools. Expect `Denied by permission policy:
    deny rule on mcp`. Do not judge this from grok's own account of which tools
@@ -159,9 +169,12 @@ restatement of the expectation. Then:
   Astra writes the plan, so this fails at stage 1, before anything else. Do not
   offer to substitute another model for Astra, Sol or Luna.
 - **Only Sol's check fails** — the shipyard test-audit pass (stage 4b) is blocked; boatyard and every other stage still run.
-- **Grok fails while enabled** — stages 2, 3 and 5 are blocked. Name
-  `SHIPYARD_NO_GROK=1` as the user's choice to run without Grok, and do not set
-  it for them.
+- **Grok fails before producing work while enabled** — if the Terra fallback
+  check passes, the Grok roles still run through Terra. If both Grok and Terra
+  fail, stages 2, 3 and 5 are blocked; name `SHIPYARD_NO_GROK=1` as the user's
+  choice to disable both Grok roles and their Terra fallback, and do not set it
+  for them. A Grok sandbox enforcement failure remains a hard stop even if
+  Terra passes.
 - **Bonsai fails while enabled** — stage 3 is blocked for `TRIVIAL` tasks.
   Name unsetting `CLAUDE_LOCAL_AVAILABLE` as the user's choice to route them to
   Luna, and do not unset it for them.
