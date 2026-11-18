@@ -20,8 +20,8 @@ When unsure, it is shipyard. An explicit "use shipyard" / "use boatyard" from th
 
 | Name | Agent | Model | Access |
 |---|---|---|---|
-| Astra | `astra` | gpt-6-astra, medium | read-only |
-| Sol | `sol` | gpt-6.1-sol, xhigh | read-only |
+| Astra | `astra` | gpt-6.2-astra, medium | read-only |
+| Sol | `sol` | gpt-6.2-sol, xhigh | read-only |
 | Fable | `fable` | Claude Fable | read-only |
 | Luna | `codex` | gpt-6-luna, max | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |

@@ -28,8 +28,8 @@ If `~/.claude/agents/` already holds a file named after any agent in this plugin
 
 | Name | Agent | Model | Access | Used in |
 | --- | --- | --- | --- | --- |
-| Astra | `astra` | gpt-6-astra, medium reasoning | read-only | shipyard: plan, plan and branch review |
-| Sol | `sol` | gpt-6.1-sol, xhigh reasoning | read-only | shipyard: test audit |
+| Astra | `astra` | gpt-6.2-astra, medium reasoning | read-only | shipyard: plan, plan and branch review |
+| Sol | `sol` | gpt-6.2-sol, xhigh reasoning | read-only | shipyard: test audit |
 | Fable | `fable` | Claude Fable | read-only | both: plan and branch review |
 | Opus | `opus` | Claude Opus | read-only | boatyard: plan, plan and branch review |
 | Opus | `opus-reviewer` | Claude Opus | read-only | shipyard: task review; both: polish review |
@@ -45,7 +45,7 @@ If `~/.claude/agents/` already holds a file named after any agent in this plugin
 
 Each agent definition pins its model. The Claude agents pin it in frontmatter, the CLI wrappers in a command-line argument. **Your session model doesn't matter.** Start on Opus, Sonnet or Haiku and Astra still writes the plan, because every stage is a dispatch to a pinned agent. Your session orchestrates. It dispatches, merges, resolves conflicts and talks to you.
 
-Swap the model IDs in `agents/*.md` for whatever your accounts offer. If your build doesn't recognise the `fable` or `sonnet` alias, use `claude-fable-5` or `claude-sonnet-5-5`. On the Codex side, `agents/astra.md` pins `gpt-6-astra` and `agents/sol.md` pins `gpt-6.1-sol`.
+Swap the model IDs in `agents/*.md` for whatever your accounts offer. If your build doesn't recognise the `fable` or `sonnet` alias, use `claude-fable-5` or `claude-sonnet-5-5`. On the Codex side, `agents/astra.md` pins `gpt-6.2-astra` and `agents/sol.md` pins `gpt-6.2-sol`.
 
 ## Triage
 

@@ -1,6 +1,6 @@
 ---
 name: sol
-description: Shipyard only. Lists test-audit fixes for the tests changed on the working branch (stage 4b, polish), via the Codex CLI (gpt-6.1-sol, xhigh reasoning, read-only). Never edits; outputs a numbered fix list.
+description: Shipyard only. Lists test-audit fixes for the tests changed on the working branch (stage 4b, polish), via the Codex CLI (gpt-6.2-sol, xhigh reasoning, read-only). Never edits; outputs a numbered fix list.
 tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -83,7 +83,7 @@ For every job you receive:
    Command:
 
    ```bash
-   codex exec --model gpt-6.1-sol -c model_reasoning_effort="xhigh" \
+   codex exec --model gpt-6.2-sol -c model_reasoning_effort="xhigh" \
      --sandbox read-only --skip-git-repo-check --cd <repo> - \
      < <dir>/prompt.md
    ```
