@@ -1,19 +1,10 @@
 # Shipyard
 
-A five-stage shipping pipeline for Claude Code. Astra writes the plan, three
-adversarial reviewers across three labs try to kill it, Codex, Grok and Sonnet
-agents implement every independent task in parallel git worktrees, and nothing merges
-until Fable, Astra and Grok have all attacked the integrated diff.
+Shipyard is a shipping pipeline for Claude Code. One model writes the plan, models from other labs try to kill it, a crew of agents builds every independent task in parallel git worktrees, and nothing reaches a PR until three reviewers from three labs have attacked the integrated diff and the full test suite has passed on it.
 
-Not every change needs all of that. Before planning, the session triages the
-spec: large or hard work gets the full shipyard, everything else goes to
-[boatyard](#boatyard), the same five stages and gates with a smaller, cheaper
-crew (Opus plans, Sonnet reviews each task).
+Most changes don't need all of that. Before planning, the session triages the spec. Large or hard work gets the full shipyard. Everything else goes to [boatyard](#boatyard), which keeps the same stages and gates with a smaller, cheaper crew.
 
-Reviews hunt for reasons to reject; the gate is
-blockers, not an empty findings list. Astra reviews the plan it wrote and the
-branch built from it — as fresh dispatches that carry none of the planning
-context, and are told to distrust both.
+Every review hunts for reasons to reject. The gate is the blocker list, not an empty findings list, so nits never hold up a merge.
 
 ## Install
 
@@ -22,303 +13,163 @@ context, and are told to distrust both.
 /plugin install shipyard@shipyard
 ```
 
-## Requires
+## Requirements
 
-- The [Codex CLI](https://github.com/openai/codex) on `PATH` and authenticated
-  (`codex login`), 0.147 or newer. Three agents shell out to `codex exec`, and
-  both Grok agents use it for their Terra fallback; one of the first three
-  writes the plan, so Codex is required from stage 1 onwards.
-  `--full-auto` is gone; Luna uses `--sandbox workspace-write -c approval_policy="never"`
-  (`--approve-for-me` conflicts with `--sandbox` since 0.153).
-- The Grok CLI (`grok`) on `PATH` and authenticated (`grok login`) for the
-  primary path. Two roles try `grok --prompt-file` first, then use Terra
-  through the Codex CLI on eligible pre-work failures. A Grok sandbox that
-  fails to apply is still a hard stop. `SHIPYARD_NO_GROK` skips both roles and
-  the fallback — see [Turning Grok off](#turning-grok-off).
-- Git, for the worktree isolation used during implementation.
-- Optional: a `claude-local` launcher on `PATH`, a Claude Code wrapper pointed
-  at a self-hosted Bonsai model. Only needed if you turn on the
-  [local Bonsai tier](#local-bonsai-tier).
+- **Codex CLI 0.147 or newer**, on `PATH` and logged in with `codex login`. Astra, Sol and Luna shell out to `codex exec`, and both Grok agents use it for their Terra fallback. Astra writes the plan, so nothing runs without Codex. Luna runs with `--sandbox workspace-write -c approval_policy="never"`. Don't pass `--full-auto`, which 0.147 removed, or `--approve-for-me`, which conflicts with `--sandbox` since 0.153.
+- **Grok CLI**, on `PATH` and logged in with `grok login`. Two roles try `grok --prompt-file` first and fall back to Terra through Codex when Grok fails before producing work. A Grok sandbox that fails to apply is still a hard stop. `SHIPYARD_NO_GROK` turns both roles off, see [Turning Grok off](#turning-grok-off).
+- **Git**, for the per-task worktrees.
+- **`claude-local`**, optional. It is a Claude Code launcher pointed at a self-hosted Bonsai model, and you only need it for the [local Bonsai tier](#local-bonsai-tier).
 
-Run `/shipyard:doctor` to check both CLIs (and `claude-local`, when the Bonsai
-tier is on) before you rely on them. It exercises
-the exact delegation form the wrappers use, and asserts that the read-only
-reviewer gates actually refuse a write — a green round-trip with a broken gate
-is the one failure that would otherwise look healthy.
+Run `/shipyard:doctor` before you rely on any of this. It runs the exact commands the wrappers use, checks `claude-local` when the Bonsai tier is on, and confirms that each read-only reviewer really refuses a write. A broken gate with a green round-trip looks healthy everywhere else, so that last check matters most.
 
-If you already keep any of `astra.md`, `sol.md`, `fable.md`, `opus.md`,
-`codex.md`, `opus-reviewer.md`, `simplifier.md`, `sonnet-reviewer.md`,
-`sonnet-implementer.md`,
-`grok-implementer.md`, `bonsai-implementer.md`, `grok-reviewer.md` or
-`mythos.md` in
-`~/.claude/agents/`, delete them after installing — the plugin ships the same
-names and duplicates are confusing. Shipyard 0.4 and earlier shipped a
-`sol-reviewer` agent (unrelated to the new `sol` agent); `astra` replaces it,
-so delete any stale copy of that one too.
+If `~/.claude/agents/` already holds a file named after any agent in this plugin, delete it after installing. The plugin ships `astra`, `sol`, `fable`, `opus`, `codex`, `opus-reviewer`, `simplifier`, `sonnet-reviewer`, `sonnet-implementer`, `grok-implementer`, `grok-reviewer`, `bonsai-implementer` and `mythos`, and duplicates get confusing. Shipyard 0.4 and earlier shipped a `sol-reviewer` agent. `astra` replaced it, and it has nothing to do with today's `sol`, so delete any stale copy.
 
 ## The cast
 
 | Name | Agent | Model | Access | Used in |
 | --- | --- | --- | --- | --- |
-| Astra | `astra` | gpt-6-astra, medium reasoning | read-only | shipyard: plan, plan + branch review |
+| Astra | `astra` | gpt-6-astra, medium reasoning | read-only | shipyard: plan, plan and branch review |
 | Sol | `sol` | gpt-6.1-sol, xhigh reasoning | read-only | shipyard: test audit |
-| Fable | `fable` | Claude Fable | read-only | both: plan + branch review |
-| Opus | `opus` | Claude Opus | read-only | boatyard: plan, plan + branch review |
-| Opus | `opus-reviewer` | Claude Opus | read-only | shipyard: task review; both: polish-pass review |
+| Fable | `fable` | Claude Fable | read-only | both: plan and branch review |
+| Opus | `opus` | Claude Opus | read-only | boatyard: plan, plan and branch review |
+| Opus | `opus-reviewer` | Claude Opus | read-only | shipyard: task review; both: polish review |
 | Simplifier | `simplifier` | Claude Opus | read-only | both: simplify; boatyard: test audit |
 | Sonnet | `sonnet-reviewer` | Claude Sonnet | read-only | boatyard: task review |
-| Grok | `grok-reviewer` | grok-4.7, xhigh reasoning | read-only | shipyard: plan + branch review |
-| Bonsai | `bonsai-implementer` | Ternary-Bonsai-2-27B via `claude-local` (opt-in) | write, edits only | both: `TRIVIAL` tasks |
-| Luna | `codex` | gpt-6-luna, max reasoning | write | both: `EASY` tasks, plus fallbacks |
+| Grok | `grok-reviewer` | grok-4.7, xhigh reasoning | read-only | shipyard: plan and branch review |
+| Bonsai | `bonsai-implementer` | Ternary-Bonsai-2-27B via `claude-local`, opt-in | write, edits only | both: `TRIVIAL` tasks |
+| Luna | `codex` | gpt-6-luna, max reasoning | write | both: `EASY` tasks, polish fixes, fallbacks |
 | Grok | `grok-implementer` | grok-4.7, xhigh reasoning | write | both: `ROUTINE` tasks |
-| Terra | `grok-implementer` / `grok-reviewer` fallback | gpt-6.1-terra, high reasoning | same access as the Grok role | on eligible Grok pre-work failures |
+| Terra | Grok fallback | gpt-6.1-terra, high reasoning | same as the Grok role | when Grok fails before producing work |
 | Sonnet | `sonnet-implementer` | Claude Sonnet 5.5 | write | shipyard: `HARD` tasks |
-| Mythos | `mythos` | Claude Mythos 5.2 (opt-in security scan) | read-only | both: branch review |
+| Mythos | `mythos` | Claude Mythos 5.2, opt-in | read-only | both: security scan in branch review |
 
-Every name is a model, pinned in the agent definition — frontmatter for the
-Claude agents, a CLI argument for the wrappers. **Your session model
-doesn't matter** — start on Opus, Sonnet or Haiku and the plan is still written
-by Astra and the branch still reviewed by Fable, Astra and Grok, because every
-stage is a dispatch to a pinned agent (Opus and Fable in boatyard). Your session orchestrates: it dispatches, merges,
-resolves conflicts, and talks to you.
+Each agent definition pins its model. The Claude agents pin it in frontmatter, the CLI wrappers in a command-line argument. **Your session model doesn't matter.** Start on Opus, Sonnet or Haiku and Astra still writes the plan, because every stage is a dispatch to a pinned agent. Your session orchestrates. It dispatches, merges, resolves conflicts and talks to you.
 
-Swap the model IDs in `agents/*.md` for whatever your accounts have. If your
-build doesn't recognise the `fable` or `sonnet` alias, use the full ID
-`claude-fable-5` or `claude-sonnet-5-5`;
-`agents/astra.md` pins `gpt-6-astra` on the Codex side, and `agents/sol.md`
-pins `gpt-6.1-sol`.
+Swap the model IDs in `agents/*.md` for whatever your accounts offer. If your build doesn't recognise the `fable` or `sonnet` alias, use `claude-fable-5` or `claude-sonnet-5-5`. On the Codex side, `agents/astra.md` pins `gpt-6-astra` and `agents/sol.md` pins `gpt-6.1-sol`.
 
-## Triage: shipyard or boatyard
+## Triage
 
-Before stage 1, the session decides which pipeline the spec gets:
+Before stage 1 the session picks a pipeline.
 
-- **Shipyard** if the work is **large or hard**: more than five tasks expected,
-  more than one module or service touched, or an open decision about API
-  shape, data format, security, compatibility, concurrency or migration. Also
-  when you ask for the strongest models.
-- **Boatyard** otherwise.
+- **Shipyard** takes work that is large or hard. That means more than five tasks, more than one module or service, or an open decision about API shape, data format, security, compatibility, concurrency or migration. It also takes anything you want on the strongest models.
+- **Boatyard** takes the rest.
 
-When unsure, it picks shipyard. It tells you the call and the reason in one
-line and carries on; say "use shipyard" or "use boatyard" to override.
+When unsure, the session picks shipyard. It tells you the call and the reason in one line and carries on. Say "use shipyard" or "use boatyard" to override it.
 
 ## Task tiers
 
-The planner tags every task, and the tag picks the implementer:
+The planner tags every task, and the tag picks the implementer.
 
 | Tag | Means | Implementer |
 | --- | --- | --- |
-| `TRIVIAL` | The task states the exact edit (a constant, a string, a version bump, one more list entry) and nothing needs running to finish it | Bonsai, or Luna if the [local tier](#local-bonsai-tier) is off |
-| `EASY` | Fully prescribed, and follows a pattern already in the codebase | Luna |
-| `ROUTINE` | No open design decision, but the implementer works out the how | Grok, or Luna if [Grok is off](#turning-grok-off) |
-| `HARD` | Leaves open an API, data format, security, compatibility, concurrency or migration decision | Sonnet (shipyard only) |
+| `TRIVIAL` | The task states the exact edit, like a constant or a version bump, and nothing needs running | Bonsai, or Luna when the [local tier](#local-bonsai-tier) is off |
+| `EASY` | Fully prescribed, and copies a pattern already in the codebase | Luna |
+| `ROUTINE` | No open design decision, but the implementer works out how | Grok, or Luna when [Grok is off](#turning-grok-off) |
+| `HARD` | Leaves an API, data format, security, compatibility, concurrency or migration decision open | Sonnet, shipyard only |
 
 ## The pipeline
 
-The full shipyard:
+**1. Plan.** Astra turns the spec into small tasks, marks which ones are independent, and tags each one.
 
-1. **Plan** — Astra turns the spec into a plan, split into small tasks,
-   marking which are independent and tagging each `TRIVIAL`, `EASY`, `ROUTINE` or `HARD`.
-2. **Plan review** — Fable, Grok and a *fresh* Astra attack the plan on paper,
-   in parallel. The second Astra is a new dispatch and a new `codex exec`: it
-   gets the spec and the plan text, never the planning run's context.
-   Blockers get fixed before a line of code is written. Verdicts key off
-   blockers: `EXECUTE AS-IS` means none, not "no nits". At most two rounds
-   (full, then a delta if blockers were folded); residual nits travel with
-   the tasks rather than looping.
-3. **Implement** — one agent per task, all dispatched at once, each in its own
-   git worktree so parallel file edits can't collide. `TRIVIAL` tasks go to
-   Bonsai (or Luna, see [Local Bonsai tier](#local-bonsai-tier)), `EASY` ones to
-   Luna, `ROUTINE` ones to Grok, `HARD` ones to Sonnet. Luna and Grok are
-   sandboxed to their worktree, Sonnet only by its instructions (see [How the
-   roles are confined](#how-the-roles-are-confined)). Each agent commits in
-   its worktree; the Codex and Grok CLIs inside the wrappers do not.
-4. **Task review** — Opus reviews each finished task against the plan step that
-   spawned it. `FIX` (blockers) goes back to the same implementer in the same
-   worktree; `APPROVE` (nits allowed) lets the branch merge. A task is done
-   only when approved *and* merged.
+**2. Plan review.** Fable, Grok and a fresh Astra attack the plan in parallel. The fresh Astra is a new dispatch and a new `codex exec`. It gets the spec and the plan text and never sees the planning run, so it reads its own plan as a stranger's. Blockers get fixed before anyone writes code. Review stops after two rounds, a full one and then a delta on what changed. Leftover nits ride along in the implementer briefs instead of starting a third round.
 
-   **Polish (4b)** — Sol lists fixes for tests added or changed on the branch,
-   against `skills/shipping-plans-with-agents/test-audit.md`; skip the test-audit
-   pass only when no tests changed, and say so in one line. Simplifier then lists
-   simplifications for changed code. Run each applicable lister even if its list
-   is empty; an empty list skips only the apply step, and that is said in one
-   line. Luna applies each non-empty list in a fresh worktree as one commit,
-   Opus judges it against the list; `FIX` goes back to the same Luna for one fix
-   round and another review before it merges. A pass that won't converge after
-   that round, or later causes a stage-5 blocker or test failure, may be dropped
-   with a one-line note; task commits never are. Stage-5 reviewers receive the
-   polish fix lists and each pass's status as part of the plan.
-5. **Branch review** — Fable, Astra and Grok (plus Mythos, if enabled) attack the integrated diff,
-   in parallel. Verdict: `MERGE AS-IS` / `MERGE WITH FIXES` / `DO NOT MERGE`,
-   derived from blockers. Fixes send the branch back through this stage; the
-   PR opens only once every enabled reviewer has an empty blocker list on the
-   diff as it then stands. Once stage 5 is clear, the session runs the project's
-   full test suite. A failure goes through the same repair loop, and the PR
-   opens only when the reviewers are clear and the suite is green on the same
-   diff. If the project has no suite, the session says so in one line.
+**3. Implement.** The session creates one worktree per task and dispatches every agent in one message. Luna and Grok run sandboxed to their worktree. Sonnet has no sandbox and stays put on instructions alone, see [How the roles are confined](#how-the-roles-are-confined). The Codex and Grok wrappers commit for their CLIs, which can't write the main `.git`. Sonnet commits its own work.
 
-The full stage-by-stage instructions live in
-`skills/shipping-plans-with-agents/SKILL.md`, which your session loads on its
-own when a plan is ready to build. You can also just say "ship this with
-shipyard".
+**4. Task review.** Opus reviews each finished task against the plan step that spawned it. `FIX` sends it back to the same implementer in the same worktree. `APPROVE` lets it merge. A task is done when it is approved and merged, not before.
+
+**4b. Polish.** Two passes run in order, test audit and then simplify. Sol lists fixes for the tests the branch added or changed, against the [test-audit rubric](#test-audit). Simplifier then lists simplifications for all changed code. The listers never edit. Luna applies each non-empty list in a fresh worktree as one commit and may decline items that would change behaviour, as long as it says why. Opus judges that commit against the list. A pass that still fails after one fix round gets dropped with a one-line note. Task commits never get dropped. The session skips the test audit when no tests changed and says so.
+
+**5. Branch review.** Fable, Astra and Grok attack the integrated diff in parallel, joined by Mythos when the security scan is on. They see both polish lists with their outcomes. Any accepted blocker goes through a repair, an Opus review, and a delta re-review by every reviewer, not just the one who raised it. Once nobody has blockers, the session runs the project's full test suite. A failure goes through the same repair loop. The PR opens only when the reviewers are clear and the suite is green on the same diff. If the project has no suite, the session says so.
+
+The full instructions live in `skills/shipping-plans-with-agents/SKILL.md`. Your session loads it when a plan is ready to build, or when you say "ship this with shipyard".
+
+## Test audit
+
+The rubric in `skills/shipping-plans-with-agents/test-audit.md` keeps a test only if a real regression in some observable behaviour makes it fail, and nothing else does. Each behaviour gets one owning test, at the strongest boundary that can see it.
+
+The listers flag tests that compare a value with itself, restate a list from the source, grep source text, or assert private state, call order or which helper ran. They also flag tests whose expected value comes from the code under test, whose mock supplies the behaviour being asserted, or that check removed code stays gone. So do tests of what the framework, runtime or type system already guarantees, fixtures the real code path could never produce, and test-only seams in production code. The rubric prefers rewriting a test over deleting it when something relies on the behaviour it covers. Deleting a test also deletes any production code that existed only for it.
+
+API, protocol, config, migration, storage, security, default-value and ordering contracts stay, even when their tests are slow or static. A test that fails on the base revision may have found a bug, and bug fixes go to you as notes instead of into the polish commit.
+
+The tombstone, platform-guarantee and rewrite-first rules come from caldoai's [prune-tests](https://github.com/caldoai/skills/blob/main/skills/prune-tests/SKILL.md) skill.
 
 ## Boatyard
 
-The same five stages and the same gates as shipyard, with a smaller crew. Every
-shipyard rule still applies: worktrees per task, blockers gate and verdict words
-don't, at most two plan-review rounds, delta re-reviews after every fix.
+Boatyard runs the same stages and gates with a smaller crew. Every shipyard rule still applies, including per-task worktrees, blocker-based gates, the two-round cap on plan review and delta re-reviews after every fix.
 
 | Stage | Shipyard | Boatyard |
 | --- | --- | --- |
 | 1. Plan | Astra | Opus |
 | 2. Plan review | Fable, fresh Astra, Grok | Fable, fresh Opus |
-| 3. Implement | Bonsai / Luna / Grok / Sonnet by tag | Bonsai / Luna / Grok by tag |
+| 3. Implement | Bonsai, Luna, Grok or Sonnet by tag | Bonsai, Luna or Grok by tag |
 | 4. Task review | Opus | Sonnet |
-| 4b. Polish | Sol (test audit), Simplifier (simplify), Opus judges | Simplifier (both), Opus judges |
-| 5. Branch review | Fable, Astra, Grok (+ Mythos) | fresh Opus, Fable (+ Mythos) |
+| 4b. Polish | Sol audits tests, Simplifier simplifies, Opus judges | Simplifier does both, Opus judges |
+| 5. Branch review | Fable, Astra, Grok, plus Mythos if on | fresh Opus, Fable, plus Mythos if on |
 | 5. Final tests | full suite, run by the session | same |
 
-- **The Opus reviews are fresh dispatches.** They get the spec and the plan or
-  diff, never the planning run's context, so the reviewer doesn't share the
-  author's blind spots.
-- **Polish review in boatyard.** Opus (`opus-reviewer`) judges the polish
-  commits here too.
-- **A `HARD` task means the triage was wrong.** If the plan, a plan reviewer or
-  a branch fix calls a task `HARD`, boatyard stops, says which task and why, and
-  restarts in shipyard from stage 1. Work already merged stays on the branch.
-- **The switches behave the same.** `CLAUDE_LOCAL_AVAILABLE` and
-  `SHIPYARD_NO_GROK` change implementer routing exactly as in shipyard, and
-  `SHIPYARD_SECURITY_SCAN` adds Mythos to the branch review.
-- **The trade-off:** planning and every review stay with Anthropic models, so
-  boatyard gives up shipyard's cross-lab independence in exchange for speed and
-  cost. That's why anything large or hard goes to shipyard.
+- **The Opus reviews are fresh dispatches.** They get the spec and the plan or diff, never the planning run, so the reviewer doesn't inherit the author's blind spots.
+- **A `HARD` task means triage got it wrong.** If the plan, a plan reviewer or a branch fix calls a task `HARD`, boatyard stops, names the task and the reason, and restarts in shipyard from stage 1. Merged work stays on the branch.
+- **The switches work the same.** `CLAUDE_LOCAL_AVAILABLE` and `SHIPYARD_NO_GROK` change implementer routing exactly as in shipyard, and `SHIPYARD_SECURITY_SCAN` adds Mythos to the branch review.
+- **Boatyard gives up cross-lab review.** Anthropic models do all of its planning and reviewing. That buys speed and cost, which is why large or hard work still goes to shipyard.
 
 The boatyard rules live in `skills/shipping-plans-with-agents/boatyard.md`.
 
 ## Turning Grok off
 
-Set `SHIPYARD_NO_GROK=1` and the two Grok roles drop out: the plan gets reviewed
-by Fable and the fresh Astra, `ROUTINE` tasks go to Luna with the easy ones, and
-the branch review runs Fable + Astra. Boatyard has no Grok reviewer, so there
-the switch only moves `ROUTINE` tasks to Luna. The stage gates are unchanged. In
-`.claude/settings.json`:
+Set `SHIPYARD_NO_GROK=1` and both Grok roles drop out. Fable and the fresh Astra review the plan, Luna takes `ROUTINE` tasks along with the `EASY` ones, and Fable and Astra review the branch. Boatyard has no Grok reviewer, so there the switch only moves `ROUTINE` tasks to Luna. The gates don't change. In `.claude/settings.json`:
 
 ```json
 { "env": { "SHIPYARD_NO_GROK": "1" } }
 ```
 
-Any non-empty value counts, `0` and `false` included — it's a switch, not a
-boolean. With the var unset, either Grok role falls back to Terra
-(`gpt-6.1-terra`, high, through Codex) if Grok is missing or fails before
-producing work. The wrapper stops if Terra also fails, the Grok sandbox was
-not enforced, or a failed implementer attempt left a dirty worktree, rather
-than quietly shipping with one less reviewer.
+Any non-empty value turns it on, `0` and `false` included. With the variable unset, a Grok role that is missing or fails before producing work falls back to Terra, which is `gpt-6.1-terra` at high reasoning through Codex. The wrapper stops instead of shipping with one reviewer short if Terra also fails, if the Grok sandbox didn't apply, or if a failed implementer run left the worktree dirty.
 
 ## Local Bonsai tier
 
-Set `CLAUDE_LOCAL_AVAILABLE=1` and `TRIVIAL` tasks (the exact edit is stated in
-the task, no command needed to finish it) go to `bonsai-implementer`, which runs
-a self-hosted Ternary-Bonsai-2-27B through the `claude-local` wrapper. Unset,
-they go to Luna with the `EASY` ones. Works the same in shipyard and boatyard,
-and every Bonsai commit is still reviewed (by Opus in shipyard, Sonnet in
-boatyard).
+Set `CLAUDE_LOCAL_AVAILABLE=1` and `TRIVIAL` tasks go to `bonsai-implementer`, which runs a self-hosted Ternary-Bonsai-2-27B through `claude-local`. Unset, Luna takes them with the `EASY` ones. It works the same in both pipelines, and every Bonsai commit still gets reviewed, by Opus in shipyard and Sonnet in boatyard.
 
 ```json
 { "env": { "CLAUDE_LOCAL_AVAILABLE": "1" } }
 ```
 
-Bonsai runs headless with `--permission-mode acceptEdits` and no `Bash`, so it
-can edit its worktree and nothing else; the wrapper commits. Once on, an
-unreachable `claude-local` stops the pipeline instead of falling back to Luna.
-`/shipyard:doctor` checks both: a round-trip, and that a write outside the
-worktree is refused.
+Bonsai runs headless with `--permission-mode acceptEdits` and no `Bash`, so it can edit its worktree and nothing else. The wrapper commits. Once the tier is on, an unreachable `claude-local` stops the pipeline. It does not fall back to Luna. `/shipyard:doctor` checks the round-trip and confirms that a write outside the worktree fails.
 
 ## Security scan
 
-Set `SHIPYARD_SECURITY_SCAN=1` and stage 5 gains one more reviewer: Mythos,
-pinned to `claude-mythos-5-2`, scans the integrated diff for security issues
-only — injection, auth gaps, leaked secrets, unsafe data handling, supply
-chain. Its blockers gate the PR like any other stage-5 reviewer's, and every
-repair gets a delta re-scan. Off by default.
+Set `SHIPYARD_SECURITY_SCAN=1` and the branch review gains Mythos, pinned to `claude-mythos-5-2`. It looks at the integrated diff for security problems only, such as injection, missing auth checks, leaked secrets, unsafe data handling and supply-chain risk. Its blockers gate the PR like everyone else's, and every repair gets a delta re-scan. It is off by default.
 
 ```json
 { "env": { "SHIPYARD_SECURITY_SCAN": "1" } }
 ```
 
-Same switch semantics as `SHIPYARD_NO_GROK`: any non-empty value turns it on.
-Once on, an unavailable Mythos model stops the pipeline instead of skipping
-the scan. The agent pins the full ID because the bare `mythos` alias doesn't
-resolve.
+Any non-empty value turns it on. Once it is on, an unavailable Mythos model stops the pipeline instead of skipping the scan. The agent pins the full model ID because the bare `mythos` alias doesn't resolve.
 
 ## How the roles are confined
 
-Every flag in the two grok commands is load-bearing, so don't trim them:
+Every flag in the two grok commands does a job. Don't trim them.
 
-- **`grok-reviewer` gets two gates.** `--sandbox read-only` is kernel-enforced
-  and refuses writes to the project; the `--deny Edit/Write/Bash/MCPTool` rules
-  cover what a sandbox can't, since `--deny MCPTool` is the only thing that
-  closes MCP tools — the `--tools` allowlist leaves them reachable.
-  `--permission-mode plan`, by contrast, does not block writes headlessly.
-- **`grok-implementer` is confined by `--sandbox workspace`**: writes are
-  limited to its worktree plus `~/.grok` and the temp dirs, so the rest of the
-  repo, sibling worktrees and the main `.git` are all off limits. That last one
-  is also why it can't commit its own work — committing from a linked worktree
-  writes the main checkout's `.git` — so the wrapper agent runs the commit.
-  Both grok roles also pass `--deny MCPTool`, because MCP servers run as
-  separate processes that no sandbox profile covers.
-- **Luna has the same commit split.** `--sandbox workspace-write` does not
-  include a linked worktree's git index, so the `codex` wrapper commits.
-  Do not add the git common dir as a writable root to paper over this.
-- **`bonsai-implementer` is confined by Claude Code permissions.** It runs
-  `claude-local -p --permission-mode acceptEdits --disallowedTools
-  Bash,WebFetch,WebSearch --strict-mcp-config` from inside its worktree. Edits
-  there are approved; anything outside needs an approval nobody can give
-  headlessly, so it is refused. No Bash means no shell to escape through, and
-  `--strict-mcp-config` drops MCP servers. `acceptEdits` matters: it overrides
-  any looser `defaultMode` in the `claude-local` config. The wrapper commits.
-- **`sonnet-implementer` has no sandbox.** It is a native Claude subagent,
-  held to its worktree by its instructions alone, so the orchestrator checks
-  the main checkout after every Sonnet task and won't merge one that wrote
-  outside its tree. That is detection, not prevention.
-- **A built-in profile that can't be applied only warns, then runs
-  unconfined.** The wrappers are told to detect that — on stderr and via the
-  `ProfileApplied` event in `~/.grok/sessions/sandbox-events.jsonl` — and refuse to
-  commit, but detection happens after the run. For prevention instead, define a
-  custom profile with a non-empty `deny` list in `.grok/sandbox.toml` and name
-  it in the command: grok refuses to start rather than expose denied paths when
-  a custom profile is unknown, its `sandbox.toml` is malformed, or (on Linux)
-  `bubblewrap` is missing. That does not extend to the kernel and entitlement
-  failures that make a built-in profile fail open.
+- **`grok-reviewer` has two gates.** `--sandbox read-only` uses the kernel to refuse writes to the project. The `--deny Edit/Write/Bash/MCPTool` rules cover what a sandbox can't. Only `--deny MCPTool` closes MCP tools, because the `--tools` allowlist leaves them reachable. `--permission-mode plan` does not block writes in headless runs.
+- **`grok-implementer` runs under `--sandbox workspace`.** It can write its worktree, `~/.grok` and the temp directories, and nothing else, which keeps it out of the rest of the repo, the sibling worktrees and the main `.git`. Committing from a linked worktree writes the main checkout's `.git`, so the wrapper agent commits for it. Both grok roles also pass `--deny MCPTool`, because MCP servers run as separate processes that no sandbox profile covers.
+- **Luna has the same commit split.** `--sandbox workspace-write` can't reach a linked worktree's git index, so the `codex` wrapper commits. Don't add the git common dir as a writable root to get around this.
+- **Claude Code permissions confine `bonsai-implementer`.** It runs `claude-local -p --permission-mode acceptEdits --disallowedTools Bash,WebFetch,WebSearch --strict-mcp-config` from inside its worktree. Edits there go through. Anything outside needs an approval nobody is around to give, so it fails. Without Bash it has no shell to escape through, and `--strict-mcp-config` drops MCP servers. `acceptEdits` also overrides any looser `defaultMode` in the `claude-local` config. The wrapper commits.
+- **`sonnet-implementer` has no sandbox.** It is a native Claude subagent that only its instructions keep in its worktree. The session checks the main checkout after every Sonnet task and won't merge a task that wrote outside its tree. That catches a breach after it happens. It doesn't prevent one.
+- **A built-in grok profile that can't apply only warns, then runs unconfined.** The wrappers look for that on stderr and in the `ProfileApplied` event in `~/.grok/sessions/sandbox-events.jsonl`, and refuse to commit when they find it. That check runs after the fact. To block the run up front, define a custom profile with a non-empty `deny` list in `.grok/sandbox.toml` and name it in the command. Grok then refuses to start when the profile is unknown, when `sandbox.toml` is malformed, or when `bubblewrap` is missing on Linux. A custom profile doesn't help with the kernel and entitlement failures that make a built-in profile fail open.
 
 ## Why cross-model
 
-The plan author and the plan reviewers share no weights, no context, and no
-sunk cost. Every role receives a self-contained prompt rather than the
-conversation, so none of them can inherit the assumption that produced the bug.
-Astra is the one role that reads its own work again, in stages 2 and 5, and
-both are fresh dispatches told to attack rather than defend — no session resume,
-no planning context, nothing to be loyal to.
+The plan's author and its reviewers share no weights, no context and no sunk cost. Every role gets a self-contained prompt instead of the conversation, so no reviewer can inherit the assumption that caused the bug. Astra is the only role that rereads its own work, in stages 2 and 5. Both rereads are fresh dispatches told to attack, with no session resume and no planning context to stay loyal to.
 
-Because the roles are pinned models rather than "whatever is running", that
-independence doesn't quietly disappear when you switch your session model.
+The roles are pinned models, so switching your session model doesn't quietly turn this off.
 
-Boatyard deliberately trades some of this away: its planner and reviewers are
-all Anthropic models. Fresh dispatches still keep the reviewers away from the
-planner's context, but they share a lab. Triage keeps that to work small and
-simple enough for the trade to be worth it.
+Boatyard trades some of this away on purpose. Fresh dispatches still keep its reviewers away from the planner's context, but they all come from one lab. Triage limits boatyard to work small and simple enough to make that trade worth it.
 
 ## Adapting it
 
-Everything is markdown. Common edits:
+Everything is markdown.
 
-- **No Codex account?** Point `agents/codex.md`, `agents/astra.md` and
-  `agents/sol.md` at a different CLI, or replace them with plain Claude
-  subagents — the pipeline shape survives, though planning and two of the
-  review seats then come from the same lab.
-- **Solo tasks.** Stage 3 with one task is just "implement in a worktree". The
-  review gates still apply.
-- **Different verdict vocabulary.** The skill's red-flags list keys off the
-  gates, not the exact words; rename them in the agent files if you prefer.
+- **No Codex account?** Point `agents/codex.md`, `agents/astra.md` and `agents/sol.md` at a different CLI, or swap them for plain Claude subagents. The pipeline still works, but planning and two review seats then come from the same lab.
+- **One task?** Stage 3 becomes "implement in a worktree". Every review gate still applies.
+- **Different verdict words?** Rename them in the agent files. The skill's red flags key off the gates, not the words.
 
 ## License
 
