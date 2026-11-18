@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "shipyard",
-  "description": "A five-stage shipping pipeline for Claude Code: Astra plans, adversarial plan review by Fable, Grok and a fresh Astra, parallel implementation in git worktrees by Luna, Grok and Sonnet, per-task review, and a three-model branch review.",
+  "description": "A shipping pipeline for Claude Code. Triage sends large or hard work to the full cross-lab shipyard and the rest to a lighter boatyard. Both plan, review the plan, build in parallel git worktrees, review every task, polish tests and code, review the whole branch, and run the full test suite before the PR.",
   "owner": {
     "name": "Piotr Szmielew",
     "url": "https://github.com/esse"
@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "shipyard",
-      "description": "Cross-model shipping pipeline on seven pinned models: Astra plans, Fable, Grok and a fresh Astra attack the plan, Luna, Grok and Sonnet implement in parallel worktrees, Opus gates each task, Sol audits the tests, and Fable, Astra and Grok all attack the branch before the PR.",
+      "description": "Pinned models from three labs. Astra plans, Fable, Grok and a fresh Astra attack the plan, Luna, Grok and Sonnet build in parallel worktrees, Opus reviews each task, Sol audits the tests, Simplifier trims the code, and Fable, Astra and Grok attack the branch before the PR. Boatyard does the same with Opus planning and Sonnet reviewing tasks.",
       "source": "./",
       "category": "workflow"
     }
