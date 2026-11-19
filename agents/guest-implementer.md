@@ -1,6 +1,6 @@
 ---
 name: guest-implementer
-description: Implement one routine but non-trivial task via the Grok CLI (grok-4.7, xhigh reasoning, write-enabled), or Gemini 4 Neon via the Antigravity CLI when ANTIGRAVITY_ENABLED is set, with a Terra fallback via Codex if Grok fails before producing work. Use for plan tasks the planner marked ROUTINE; TRIVIAL ones to bonsai-implementer (or codex), EASY tasks to the codex agent, HARD ones to sonnet-implementer.
+description: Implement one routine but non-trivial task via the Grok CLI (grok-4.7, xhigh reasoning, write-enabled), or Gemini 4 Neon via the Antigravity CLI when ANTIGRAVITY_ENABLED is set, with a Terra fallback via Codex if Grok fails before producing work. Use for plan tasks the planner marked ROUTINE; EASY tasks to the codex agent, HARD ones to sonnet-implementer.
 tools: Bash, Read, Write, Glob, Grep
 ---
 

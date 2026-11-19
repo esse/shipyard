@@ -17,8 +17,7 @@ switches — except the cast below.
 | 5. Branch review | `fable` + `astra` + `guest-reviewer` (+ `mythos`) | fresh `opus` (job 3) + `fable` (+ `mythos`) |
 | 5. Final tests | orchestrator runs the full suite | same as shipyard |
 
-Routing in stage 3: `TRIVIAL` → `bonsai-implementer` (`codex` when
-`CLAUDE_LOCAL_AVAILABLE` is unset), `EASY` → `codex`, `ROUTINE` →
+Routing in stage 3: `EASY` → `codex`, `ROUTINE` →
 `guest-implementer` (`codex` when `SHIPYARD_NO_GROK` is set and
 `ANTIGRAVITY_ENABLED` is not). `SHIPYARD_NO_GROK` changes nothing else
 here — boatyard has no Grok reviewer. `ANTIGRAVITY_ENABLED` only moves

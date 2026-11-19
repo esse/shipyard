@@ -25,11 +25,8 @@ is how a bug ships past every test the plan prescribes.
 - Mark explicitly which tasks are independent of each other. They run in
   parallel git worktrees, so a hidden ordering dependency breaks the
   pipeline.
-- Tag every task TRIVIAL, EASY or ROUTINE; the tag picks the implementer.
-  TRIVIAL: an EASY task whose exact edit the task text states outright (a
-  constant, a string, a version bump, one more entry in a list of
-  siblings) and that needs no command run to finish — its implementer
-  has no shell. EASY: fully prescribed, follows a pattern already in this
+- Tag every task EASY or ROUTINE; the tag picks the implementer.
+  EASY: fully prescribed, follows a pattern already in this
   codebase that you can name. ROUTINE: not fully prescribed or no pattern
   to copy — the implementer works out the how, never the what.
 - None of them may leave open a decision about API shape, data format,
