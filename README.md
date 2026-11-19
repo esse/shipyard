@@ -134,7 +134,7 @@ Set `ANTIGRAVITY_ENABLED=1` and Gemini 4 Neon (`gemini-4-neon-xhigh`, through th
 { "env": { "ANTIGRAVITY_ENABLED": "1" } }
 ```
 
-Why these seats: on the [Artificial Analysis coding-agent index](https://artificialanalysis.ai/agents/coding-agents) (November 2026), Antigravity with Neon xhigh ranks first at 58.6, against 41.6 for Grok 4.7 xhigh, at under half the cost per task. Its biggest lead is codebase Q&A, 67.7 against 51.3 for GPT-6.2 Sol xhigh, and Q&A is the reading-and-judging work a test audit does. Neon doesn't take Astra's planning seat, because the fresh Astra plus the Grok seat would then put one model in two of stage 2's three reviewer seats.
+Why these seats: on the [Artificial Analysis coding-agent index](https://artificialanalysis.ai/agents/coding-agents) (November 2026), Antigravity with Neon xhigh scores 58.6, level with Claude Fable 5.2 xhigh (58.5) and Opus 5.5 max (58.2) at the top and well ahead of Grok 4.7 xhigh (41.6), at under half Grok's cost per task. Its biggest lead is codebase Q&A, 67.7 against 51.3 for GPT-6.2 Sol xhigh, and Q&A is the reading-and-judging work a test audit does. Neon doesn't take Astra's planning seat, because the fresh Astra plus the Grok seat would then put one model in two of stage 2's three reviewer seats.
 
 It needs `agy` 1.5.12 or newer and `GEMINI_API_KEY` in the environment Claude Code starts from. The wrappers pass `"modelProvider":"gemini"` per run, so your saved agy settings stay untouched. Any non-empty value turns it on, and `SHIPYARD_NO_GROK` is then ignored, because that switch is about Grok and Grok no longer runs. If Neon is missing or fails before producing work, the Grok roles fall back to Terra as before and Sol falls back to `gpt-6.2-sol`.
 
