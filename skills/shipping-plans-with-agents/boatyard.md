@@ -9,20 +9,20 @@ switches — except the cast below.
 | Stage | Shipyard | Boatyard |
 |---|---|---|
 | 1. Plan | `astra` | `opus` (job 1) |
-| 2. Plan review | `fable` + fresh `astra` + `grok-reviewer` | `fable` + fresh `opus` (job 2) |
+| 2. Plan review | `fable` + fresh `astra` + `guest-reviewer` | `fable` + fresh `opus` (job 2) |
 | 3. Implement | by tag, `HARD` → `sonnet-implementer` | by tag, no `HARD` |
 | 4. Task review | `opus-reviewer` | `sonnet-reviewer` |
 | 4b. Test audit | `sol` lists → `codex` applies → `opus-reviewer` | `simplifier` (test-audit job) lists → `codex` applies → `opus-reviewer` |
 | 4b. Simplify | `simplifier` (simplify job) → `codex` → `opus-reviewer` | same as shipyard |
-| 5. Branch review | `fable` + `astra` + `grok-reviewer` (+ `mythos`) | fresh `opus` (job 3) + `fable` (+ `mythos`) |
+| 5. Branch review | `fable` + `astra` + `guest-reviewer` (+ `mythos`) | fresh `opus` (job 3) + `fable` (+ `mythos`) |
 | 5. Final tests | orchestrator runs the full suite | same as shipyard |
 
 Routing in stage 3: `TRIVIAL` → `bonsai-implementer` (`codex` when
 `CLAUDE_LOCAL_AVAILABLE` is unset), `EASY` → `codex`, `ROUTINE` →
-`grok-implementer` (`codex` when `SHIPYARD_NO_GROK` is set and
+`guest-implementer` (`codex` when `SHIPYARD_NO_GROK` is set and
 `ANTIGRAVITY_ENABLED` is not). `SHIPYARD_NO_GROK` changes nothing else
 here — boatyard has no Grok reviewer. `ANTIGRAVITY_ENABLED` only moves
-`grok-implementer` onto Gemini 4 Neon, since boatyard has no Grok reviewer
+`guest-implementer` onto Gemini 4 Neon, since boatyard has no Grok reviewer
 and no Sol. `SHIPYARD_SECURITY_SCAN` adds `mythos` to stage 5 exactly as in
 shipyard.
 

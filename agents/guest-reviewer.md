@@ -1,5 +1,5 @@
 ---
-name: grok-reviewer
+name: guest-reviewer
 description: Adversarial review of a plan (stage 2, alongside Fable and Astra) or of the integrated branch diff (stage 5, alongside Fable and Astra), via the Grok CLI (grok-4.7, xhigh reasoning, read-only), or Gemini 4 Neon via the Antigravity CLI when ANTIGRAVITY_ENABLED is set, with a Terra fallback via Codex if Grok fails before producing an answer.
 tools: Bash, Read, Write, Glob, Grep
 ---

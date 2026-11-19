@@ -76,7 +76,7 @@ Do the work in a throwaway directory so nothing touches the user's tree:
      ; echo "exit=$?"; rm -rf "$d"
    ```
 
-## Grok (grok-implementer, grok-reviewer)
+## Grok (guest-implementer, guest-reviewer)
 
 If `printenv ANTIGRAVITY_ENABLED` prints a non-empty value, run only check 3
 (Terra) here and say so: Grok no longer runs, and `SHIPYARD_NO_GROK` is
@@ -154,7 +154,7 @@ non-empty value.
    must list `gemini-4-neon-xhigh` and `gemini-4-neon-low`, the one the
    probes below use.
 4. **The reviewer's read-only gate really denies** — the security-critical
-   one, shared by `grok-reviewer` and `sol`. Run from the project
+   one, shared by `guest-reviewer` and `sol`. Run from the project
    directory with the reviewers' exact flags:
 
    ```bash
