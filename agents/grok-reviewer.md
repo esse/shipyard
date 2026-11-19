@@ -146,16 +146,15 @@ For every plan or spec you receive:
 
    **With `ANTIGRAVITY_ENABLED` set** (`printenv ANTIGRAVITY_ENABLED` prints
    anything), run Gemini 4 Neon through the Antigravity CLI instead of grok.
-   Confirm `agy --settings '{"modelProvider":"gemini"}' models` lists
-   `gemini-4-neon-xhigh` (`models` goes after `--settings`; the subcommand
-   rejects the flag), and that `[ -n "$GEMINI_API_KEY" ]` succeeds — never
-   print the key. Then:
+   Confirm `agy models` lists
+   `gemini-4-neon-xhigh`, which also proves agy is signed in (a Gemini
+   subscription login or `GEMINI_API_KEY`, whichever the user set up). Then:
 
    ```bash
    cd <repo> && [ "$(git rev-parse --show-toplevel)" = "<repo-real>" ] \
      && agy -p "$(cat <dir>/prompt.md)" \
      --model gemini-4-neon-xhigh --sandbox --dangerously-skip-permissions \
-     --settings '{"modelProvider":"gemini","permissions":{"deny":["write_file(*)","command(*)","mcp(*)","execute_url(*)"]}}'
+     --settings '{"permissions":{"deny":["write_file(*)","command(*)","mcp(*)","execute_url(*)"]}}'
    ```
 
    The deny rules are the read-only gate, and they hold under
@@ -167,7 +166,7 @@ For every plan or spec you receive:
    session's checkout; keep it all in one Bash command.
    agy exits 0 even when it produced nothing: output starting with
    `jetski: no output produced` is a failure with no answer. The Terra fallback below applies with
-   Neon in Grok's place: `agy` missing, `GEMINI_API_KEY` unset, the model
+   Neon in Grok's place: `agy` missing, the model
    not listed, the launch denied or rejected as `Argument list too long` (the prompt goes in as one argument), or a non-zero exit or no-output line
    before an answer. The grok sandbox-event check does not apply; agy logs
    no equivalent, which is why `/shipyard:doctor` probes this gate. Header:

@@ -58,15 +58,14 @@ For every task you receive:
 
    **With `ANTIGRAVITY_ENABLED` set** (`printenv ANTIGRAVITY_ENABLED` prints
    anything), run Gemini 4 Neon through the Antigravity CLI instead of grok.
-   Confirm `agy --settings '{"modelProvider":"gemini"}' models` lists
-   `gemini-4-neon-xhigh` (`models` goes after `--settings`; the subcommand
-   rejects the flag), and that `[ -n "$GEMINI_API_KEY" ]` succeeds — never
-   print the key. Write `<dir>/settings.json` with the Write tool, where
+   Confirm `agy models` lists
+   `gemini-4-neon-xhigh`, which also proves agy is signed in (a Gemini
+   subscription login or `GEMINI_API_KEY`, whichever the user set up). Write `<dir>/settings.json` with the Write tool, where
    `<worktree-real>` is what `realpath <worktree>` prints (allow rules match
    the resolved path only; on macOS `/var/…` is really `/private/var/…`):
 
    ```json
-   {"modelProvider":"gemini","permissions":{"allow":["read_file(*)","write_file(<worktree-real>)","command(*)"],"deny":["mcp(*)","unsandboxed(*)"]}}
+   {"permissions":{"allow":["read_file(*)","write_file(<worktree-real>)","command(*)"],"deny":["mcp(*)","unsandboxed(*)"]}}
    ```
 
    Then run:
@@ -88,7 +87,7 @@ For every task you receive:
    `jetski: no output produced` is a failure with no answer. A refused action ends the
    run that way too, so treat it as a failed run under step 5. The Terra
    fallback applies with Neon in Grok's place: `agy` missing,
-   `GEMINI_API_KEY` unset, the model not listed, the launch denied or rejected as `Argument list too long` (the prompt goes in as one argument), or a
+   the model not listed, the launch denied or rejected as `Argument list too long` (the prompt goes in as one argument), or a
    non-zero exit or no-output line before producing work, with the same
    dirty-worktree stop. Header: `gemini-4-neon (xhigh) via Antigravity CLI`,
    or for a fallback `… — Neon fallback: <one-line reason>`.

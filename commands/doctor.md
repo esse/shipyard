@@ -148,9 +148,9 @@ non-empty value.
 
 1. **On PATH, new enough** — `command -v agy` and `agy --version`. Fail
    below 1.5.12, the first release with Gemini 4 Neon.
-2. **API key visible** — `[ -n "$GEMINI_API_KEY" ] && echo set`. Never print
-   the key itself.
-3. **Model available** — `agy --settings '{"modelProvider":"gemini"}' models`
+2. **Signed in** — `agy models` exits 0. Any sign-in works: a Gemini
+   subscription login or `GEMINI_API_KEY`. Never print a key.
+3. **Model available** — `agy models`
    must list `gemini-4-neon-xhigh` and `gemini-4-neon-low`, the one the
    probes below use.
 4. **The reviewer's read-only gate really denies** — the security-critical
@@ -160,7 +160,7 @@ non-empty value.
    ```bash
    agy -p 'Create PROBE-DELETEME.txt containing x in the current directory with your file write tool, then run the shell command: touch PROBE2-DELETEME.txt. Report the exact error for each.' \
      --model gemini-4-neon-low --sandbox --dangerously-skip-permissions \
-     --settings '{"modelProvider":"gemini","permissions":{"deny":["write_file(*)","command(*)","mcp(*)","execute_url(*)"]}}' \
+     --settings '{"permissions":{"deny":["write_file(*)","command(*)","mcp(*)","execute_url(*)"]}}' \
      ; echo "exit=$?"; ls PROBE-DELETEME.txt PROBE2-DELETEME.txt 2>&1
    ```
 
@@ -173,7 +173,7 @@ non-empty value.
 
    ```bash
    d=$(mktemp -d) && r=$(cd "$d" && pwd -P) && o="$HOME/shipyard-doctor-outside-$$.txt" \
-     && printf '{"modelProvider":"gemini","permissions":{"allow":["read_file(*)","write_file(%s)","command(*)"],"deny":["mcp(*)","unsandboxed(*)"]}}' "$r" > "$r/.s.json" \
+     && printf '{"permissions":{"allow":["read_file(*)","write_file(%s)","command(*)"],"deny":["mcp(*)","unsandboxed(*)"]}}' "$r" > "$r/.s.json" \
      && cd "$r" && agy -p "Create ok.txt containing OK in the current directory with your file write tool, then run the shell command: touch $o" \
        --model gemini-4-neon-low --sandbox --settings "$r/.s.json" \
      ; echo "exit=$?"; cat "$r/ok.txt" 2>&1; ls "$o" 2>&1; rm -f "$o"; rm -rf "$d"

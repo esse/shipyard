@@ -93,10 +93,9 @@ For every job you receive:
 
    **With `ANTIGRAVITY_ENABLED` set** (`printenv ANTIGRAVITY_ENABLED` prints
    anything), run Gemini 4 Neon through the Antigravity CLI first, with
-   codex as the fallback. Confirm `agy --settings '{"modelProvider":"gemini"}' models` lists
-   `gemini-4-neon-xhigh` (`models` goes after `--settings`; the subcommand
-   rejects the flag), and that `[ -n "$GEMINI_API_KEY" ]` succeeds — never
-   print the key. Neon gets no shell, so
+   codex as the fallback. Confirm `agy models` lists
+   `gemini-4-neon-xhigh`, which also proves agy is signed in (a Gemini
+   subscription login or `GEMINI_API_KEY`, whichever the user set up). Neon gets no shell, so
    run `git -C <repo> diff <base>...HEAD -- <test files>` yourself, paste it
    into the prompt under a `Diff:` heading, and replace the "Run `git diff
    ...` yourself" sentence with "The diff of those files is pasted below."
@@ -106,7 +105,7 @@ For every job you receive:
    cd <repo> && [ "$(git rev-parse --show-toplevel)" = "<repo-real>" ] \
      && agy -p "$(cat <dir>/prompt.md)" \
      --model gemini-4-neon-xhigh --sandbox --dangerously-skip-permissions \
-     --settings '{"modelProvider":"gemini","permissions":{"deny":["write_file(*)","command(*)","mcp(*)","execute_url(*)"]}}'
+     --settings '{"permissions":{"deny":["write_file(*)","command(*)","mcp(*)","execute_url(*)"]}}'
    ```
 
    The deny rules are the read-only gate, and they hold under
@@ -115,7 +114,7 @@ For every job you receive:
    dropped `cd` fail before agy starts, instead of running it in the
    session's checkout; keep it all in one Bash command. agy exits 0 even when it produced nothing: output starting with
    `jetski: no output produced` is a failure with no answer.
-   If `agy` is missing, `GEMINI_API_KEY` is unset, the model is not listed,
+   If `agy` is missing, the model is not listed,
    the launch is denied or rejected as `Argument list too long`, or the run fails before an answer, run the codex
    command above with the same prompt and name the fallback in the header:
    `gpt-6.2-sol (xhigh) via Codex CLI — Neon fallback: <one-line reason>`.

@@ -17,7 +17,7 @@ Every review hunts for reasons to reject. The gate is the blocker list, not an e
 
 - **Codex CLI 0.147 or newer**, on `PATH` and logged in with `codex login`. Astra, Sol and Luna shell out to `codex exec`, and both Grok agents use it for their Terra fallback. Astra writes the plan, so nothing runs without Codex. Luna runs with `--sandbox workspace-write -c approval_policy="never"`. Don't pass `--full-auto`, which 0.147 removed, or `--approve-for-me`, which conflicts with `--sandbox` since 0.153.
 - **Grok CLI**, on `PATH` and logged in with `grok login`. Two roles try `grok --prompt-file` first and fall back to Terra through Codex when Grok fails before producing work. A Grok sandbox that fails to apply is still a hard stop. `SHIPYARD_NO_GROK` turns both roles off unless `ANTIGRAVITY_ENABLED` is set, see [Turning Grok off](#turning-grok-off).
-- **Antigravity CLI 1.5.12 or newer** (`agy`), optional, with `GEMINI_API_KEY` exported in the environment Claude Code starts from. Only needed for [Gemini 4 Neon via Antigravity](#gemini-4-neon-via-antigravity).
+- **Antigravity CLI 1.5.12 or newer** (`agy`), optional, signed in with a Gemini subscription or with `GEMINI_API_KEY` exported in the environment Claude Code starts from. Only needed for [Gemini 4 Neon via Antigravity](#gemini-4-neon-via-antigravity).
 - **Git**, for the per-task worktrees.
 - **`claude-local`**, optional. It is a Claude Code launcher pointed at a self-hosted Bonsai model, and you only need it for the [local Bonsai tier](#local-bonsai-tier).
 
@@ -136,7 +136,7 @@ Set `ANTIGRAVITY_ENABLED=1` and Gemini 4 Neon (`gemini-4-neon-xhigh`, through th
 
 Why these seats: on the [Artificial Analysis coding-agent index](https://artificialanalysis.ai/agents/coding-agents) (November 2026), Antigravity with Neon xhigh scores 58.6, level with Claude Fable 5.2 xhigh (58.5) and Opus 5.5 max (58.2) at the top and well ahead of Grok 4.7 xhigh (41.6), at under half Grok's cost per task. Its biggest lead is codebase Q&A, 67.7 against 51.3 for GPT-6.2 Sol xhigh, and Q&A is the reading-and-judging work a test audit does. Neon doesn't take Astra's planning seat, because the fresh Astra plus the Grok seat would then put one model in two of stage 2's three reviewer seats.
 
-It needs `agy` 1.5.12 or newer and `GEMINI_API_KEY` in the environment Claude Code starts from. The wrappers pass `"modelProvider":"gemini"` per run, so your saved agy settings stay untouched. Any non-empty value turns it on, and `SHIPYARD_NO_GROK` is then ignored, because that switch is about Grok and Grok no longer runs. If Neon is missing or fails before producing work, the Grok roles fall back to Terra as before and Sol falls back to `gpt-6.2-sol`.
+It needs `agy` 1.5.12 or newer, signed in either way agy supports: a Gemini subscription login, or `GEMINI_API_KEY` in the environment Claude Code starts from. The wrappers don't pick a backend, so agy uses whichever sign-in you set up. Any non-empty value turns it on, and `SHIPYARD_NO_GROK` is then ignored, because that switch is about Grok and Grok no longer runs. If Neon is missing or fails before producing work, the Grok roles fall back to Terra as before and Sol falls back to `gpt-6.2-sol`.
 
 ## Local Bonsai tier
 
