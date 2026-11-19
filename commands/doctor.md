@@ -1,5 +1,5 @@
 ---
-description: Check that the Codex and Grok CLIs actually work for delegation, and that the read-only reviewer gates really deny writes.
+description: Check that the Codex, Grok and Antigravity CLIs actually work for delegation, and that the read-only reviewer gates really deny writes.
 allowed-tools: Bash, Read
 ---
 
@@ -78,7 +78,10 @@ Do the work in a throwaway directory so nothing touches the user's tree:
 
 ## Grok (grok-implementer, grok-reviewer)
 
-Skip this whole section and say so if `printenv SHIPYARD_NO_GROK` prints a
+If `printenv ANTIGRAVITY_ENABLED` prints a non-empty value, run only check 3
+(Terra) here and say so: Grok no longer runs, and `SHIPYARD_NO_GROK` is
+ignored. Otherwise skip this whole section and say so if
+`printenv SHIPYARD_NO_GROK` prints a
 non-empty value — Grok is off for this project, and a missing CLI is then
 expected rather than a fault.
 
@@ -138,6 +141,52 @@ expected rather than a fault.
    it has: it lists `use_tool` as available even when the deny rule stops every
    call. Skip with a note if no server is configured.
 
+## Antigravity (Gemini 4 Neon in the grok and sol roles)
+
+Skip this section and say so unless `printenv ANTIGRAVITY_ENABLED` prints a
+non-empty value.
+
+1. **On PATH, new enough** — `command -v agy` and `agy --version`. Fail
+   below 1.5.12, the first release with Gemini 4 Neon.
+2. **API key visible** — `[ -n "$GEMINI_API_KEY" ] && echo set`. Never print
+   the key itself.
+3. **Model available** — `agy --settings '{"modelProvider":"gemini"}' models`
+   must list `gemini-4-neon-xhigh` and `gemini-4-neon-low`, the one the
+   probes below use.
+4. **The reviewer's read-only gate really denies** — the security-critical
+   one, shared by `grok-reviewer` and `sol`. Run from the project
+   directory with the reviewers' exact flags:
+
+   ```bash
+   agy -p 'Create PROBE-DELETEME.txt containing x in the current directory with your file write tool, then run the shell command: touch PROBE2-DELETEME.txt. Report the exact error for each.' \
+     --model gemini-4-neon-low --sandbox --dangerously-skip-permissions \
+     --settings '{"modelProvider":"gemini","permissions":{"deny":["write_file(*)","command(*)","mcp(*)","execute_url(*)"]}}' \
+     ; echo "exit=$?"; ls PROBE-DELETEME.txt PROBE2-DELETEME.txt 2>&1
+   ```
+
+   **Pass means `ls` finds neither file** and agy reported a deny rule. If
+   either appears, delete it and report a failure loudly: stage 2, stage 5
+   and the test audit have no read-only gate.
+5. **Implementer round-trip and confinement** — the implementer's exact
+   flags, minus the toplevel guard (the probe directory is not a git repo). The outside target sits in `$HOME`, because the temp dirs are
+   writable by design:
+
+   ```bash
+   d=$(mktemp -d) && r=$(cd "$d" && pwd -P) && o="$HOME/shipyard-doctor-outside-$$.txt" \
+     && printf '{"modelProvider":"gemini","permissions":{"allow":["read_file(*)","write_file(%s)","command(*)"],"deny":["mcp(*)","unsandboxed(*)"]}}' "$r" > "$r/.s.json" \
+     && cd "$r" && agy -p "Create ok.txt containing OK in the current directory with your file write tool, then run the shell command: touch $o" \
+       --model gemini-4-neon-low --sandbox --settings "$r/.s.json" \
+     ; echo "exit=$?"; cat "$r/ok.txt" 2>&1; ls "$o" 2>&1; rm -f "$o"; rm -rf "$d"
+   ```
+
+   **Pass means `ok.txt` contains `OK` and the outside file does not
+   exist.** If it exists, report a failure loudly: the implementer is not
+   confined to its worktree. Expect the `touch` to be refused by the
+   `unsandboxed(*)` deny rule or by the sandbox itself (`Operation not
+   permitted`); a run that ends with `jetski: no output produced` after an
+   auto-denied permission is also the gate working, as long as `ok.txt`
+   exists.
+
 ## Local Bonsai (bonsai-implementer)
 
 Skip this section and say so unless `printenv CLAUDE_LOCAL_AVAILABLE` prints a
@@ -164,17 +213,23 @@ non-empty value.
 One line per check: `PASS` / `FAIL` / `SKIP` with the observed evidence, not a
 restatement of the expectation. Then:
 
-- **Both CLIs pass** — say the pipeline can run all five stages.
+- **Every enabled CLI passes** — say the pipeline can run all five stages.
 - **Codex fails** — stages 1, 2, 3, 4b and 5 are blocked; the pipeline cannot run.
   Astra writes the plan, so this fails at stage 1, before anything else. Do not
   offer to substitute another model for Astra, Sol or Luna.
 - **Only Sol's check fails** — the shipyard test-audit pass (stage 4b) is blocked; boatyard and every other stage still run.
 - **Grok fails before producing work while enabled** — if the Terra fallback
   check passes, the Grok roles still run through Terra. If both Grok and Terra
-  fail, stages 2, 3 and 5 are blocked; name `SHIPYARD_NO_GROK=1` as the user's
+  fail, stages 2, 3 and 5 are blocked; name `SHIPYARD_NO_GROK=1` (ignored under `ANTIGRAVITY_ENABLED`) as the user's
   choice to disable both Grok roles and their Terra fallback, and do not set it
   for them. A Grok sandbox enforcement failure remains a hard stop even if
   Terra passes.
+- **Antigravity fails while enabled** — if the Terra check passes, the two
+  Grok roles still run through Terra, and if Sol's check passes, the test
+  audit runs on gpt-6.2-sol. If a fallback fails too, its stages are
+  blocked; name unsetting `ANTIGRAVITY_ENABLED` as the user's choice and do
+  not unset it for them. A failed gate check (4 or 5) is a hard stop even
+  when the fallbacks pass.
 - **Bonsai fails while enabled** — stage 3 is blocked for `TRIVIAL` tasks.
   Name unsetting `CLAUDE_LOCAL_AVAILABLE` as the user's choice to route them to
   Luna, and do not unset it for them.

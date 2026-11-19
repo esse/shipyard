@@ -19,9 +19,11 @@ switches — except the cast below.
 
 Routing in stage 3: `TRIVIAL` → `bonsai-implementer` (`codex` when
 `CLAUDE_LOCAL_AVAILABLE` is unset), `EASY` → `codex`, `ROUTINE` →
-`grok-implementer` (`codex` when `SHIPYARD_NO_GROK` is set).
-`SHIPYARD_NO_GROK` changes nothing else here — boatyard has no Grok
-reviewer. `SHIPYARD_SECURITY_SCAN` adds `mythos` to stage 5 exactly as in
+`grok-implementer` (`codex` when `SHIPYARD_NO_GROK` is set and
+`ANTIGRAVITY_ENABLED` is not). `SHIPYARD_NO_GROK` changes nothing else
+here — boatyard has no Grok reviewer. `ANTIGRAVITY_ENABLED` only moves
+`grok-implementer` onto Gemini 4 Neon, since boatyard has no Grok reviewer
+and no Sol. `SHIPYARD_SECURITY_SCAN` adds `mythos` to stage 5 exactly as in
 shipyard.
 
 Stage 4b runs exactly as in `SKILL.md`, with `simplifier` in place of `sol`

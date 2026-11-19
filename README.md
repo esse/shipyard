@@ -16,7 +16,8 @@ Every review hunts for reasons to reject. The gate is the blocker list, not an e
 ## Requirements
 
 - **Codex CLI 0.147 or newer**, on `PATH` and logged in with `codex login`. Astra, Sol and Luna shell out to `codex exec`, and both Grok agents use it for their Terra fallback. Astra writes the plan, so nothing runs without Codex. Luna runs with `--sandbox workspace-write -c approval_policy="never"`. Don't pass `--full-auto`, which 0.147 removed, or `--approve-for-me`, which conflicts with `--sandbox` since 0.153.
-- **Grok CLI**, on `PATH` and logged in with `grok login`. Two roles try `grok --prompt-file` first and fall back to Terra through Codex when Grok fails before producing work. A Grok sandbox that fails to apply is still a hard stop. `SHIPYARD_NO_GROK` turns both roles off, see [Turning Grok off](#turning-grok-off).
+- **Grok CLI**, on `PATH` and logged in with `grok login`. Two roles try `grok --prompt-file` first and fall back to Terra through Codex when Grok fails before producing work. A Grok sandbox that fails to apply is still a hard stop. `SHIPYARD_NO_GROK` turns both roles off unless `ANTIGRAVITY_ENABLED` is set, see [Turning Grok off](#turning-grok-off).
+- **Antigravity CLI 1.5.12 or newer** (`agy`), optional, with `GEMINI_API_KEY` exported in the environment Claude Code starts from. Only needed for [Gemini 4 Neon via Antigravity](#gemini-4-neon-via-antigravity).
 - **Git**, for the per-task worktrees.
 - **`claude-local`**, optional. It is a Claude Code launcher pointed at a self-hosted Bonsai model, and you only need it for the [local Bonsai tier](#local-bonsai-tier).
 
@@ -40,6 +41,7 @@ If `~/.claude/agents/` already holds a file named after any agent in this plugin
 | Luna | `codex` | gpt-6-luna, max reasoning | write | both: `EASY` tasks, polish fixes, fallbacks |
 | Grok | `grok-implementer` | grok-4.7, xhigh reasoning | write | both: `ROUTINE` tasks |
 | Terra | Grok fallback | gpt-6.1-terra, high reasoning | same as the Grok role | when Grok fails before producing work |
+| Neon | `grok-reviewer`, `grok-implementer`, `sol` | gemini-4-neon-xhigh via `agy`, opt-in | same as the role it fills | the Grok seats and the test audit, with `ANTIGRAVITY_ENABLED` |
 | Sonnet | `sonnet-implementer` | Claude Sonnet 5.5 | write | shipyard: `HARD` tasks |
 | Mythos | `mythos` | Claude Mythos 5.2, opt-in | read-only | both: security scan in branch review |
 
@@ -109,20 +111,32 @@ Boatyard runs the same stages and gates with a smaller crew. Every shipyard rule
 
 - **The Opus reviews are fresh dispatches.** They get the spec and the plan or diff, never the planning run, so the reviewer doesn't inherit the author's blind spots.
 - **A `HARD` task means triage got it wrong.** If the plan, a plan reviewer or a branch fix calls a task `HARD`, boatyard stops, names the task and the reason, and restarts in shipyard from stage 1. Merged work stays on the branch.
-- **The switches work the same.** `CLAUDE_LOCAL_AVAILABLE` and `SHIPYARD_NO_GROK` change implementer routing exactly as in shipyard, and `SHIPYARD_SECURITY_SCAN` adds Mythos to the branch review.
+- **The switches work the same.** `CLAUDE_LOCAL_AVAILABLE` and `SHIPYARD_NO_GROK` change implementer routing exactly as in shipyard, `ANTIGRAVITY_ENABLED` moves `ROUTINE` tasks onto Neon, and `SHIPYARD_SECURITY_SCAN` adds Mythos to the branch review.
 - **Boatyard gives up cross-lab review.** Anthropic models do all of its planning and reviewing. That buys speed and cost, which is why large or hard work still goes to shipyard.
 
 The boatyard rules live in `skills/shipping-plans-with-agents/boatyard.md`.
 
 ## Turning Grok off
 
-Set `SHIPYARD_NO_GROK=1` and both Grok roles drop out. Fable and the fresh Astra review the plan, Luna takes `ROUTINE` tasks along with the `EASY` ones, and Fable and Astra review the branch. Boatyard has no Grok reviewer, so there the switch only moves `ROUTINE` tasks to Luna. The gates don't change. In `.claude/settings.json`:
+Set `SHIPYARD_NO_GROK=1` and both Grok roles drop out. Fable and the fresh Astra review the plan, Luna takes `ROUTINE` tasks along with the `EASY` ones, and Fable and Astra review the branch. Boatyard has no Grok reviewer, so there the switch only moves `ROUTINE` tasks to Luna. The gates don't change. With `ANTIGRAVITY_ENABLED` set this switch is ignored, see [Gemini 4 Neon via Antigravity](#gemini-4-neon-via-antigravity). In `.claude/settings.json`:
 
 ```json
 { "env": { "SHIPYARD_NO_GROK": "1" } }
 ```
 
 Any non-empty value turns it on, `0` and `false` included. With the variable unset, a Grok role that is missing or fails before producing work falls back to Terra, which is `gpt-6.1-terra` at high reasoning through Codex. The wrapper stops instead of shipping with one reviewer short if Terra also fails, if the Grok sandbox didn't apply, or if a failed implementer run left the worktree dirty.
+
+## Gemini 4 Neon via Antigravity
+
+Set `ANTIGRAVITY_ENABLED=1` and Gemini 4 Neon (`gemini-4-neon-xhigh`, through the Antigravity CLI) takes three seats: both Grok roles and Sol's test audit. Agent names, routing and gates stay as they are. Boatyard has no Grok reviewer and no Sol, so there it only moves `ROUTINE` tasks.
+
+```json
+{ "env": { "ANTIGRAVITY_ENABLED": "1" } }
+```
+
+Why these seats: on the [Artificial Analysis coding-agent index](https://artificialanalysis.ai/agents/coding-agents) (November 2026), Antigravity with Neon xhigh ranks first at 58.6, against 41.6 for Grok 4.7 xhigh, at under half the cost per task. Its biggest lead is codebase Q&A, 67.7 against 51.3 for GPT-6.2 Sol xhigh, and Q&A is the reading-and-judging work a test audit does. Neon doesn't take Astra's planning seat, because the fresh Astra plus the Grok seat would then put one model in two of stage 2's three reviewer seats.
+
+It needs `agy` 1.5.12 or newer and `GEMINI_API_KEY` in the environment Claude Code starts from. The wrappers pass `"modelProvider":"gemini"` per run, so your saved agy settings stay untouched. Any non-empty value turns it on, and `SHIPYARD_NO_GROK` is then ignored, because that switch is about Grok and Grok no longer runs. If Neon is missing or fails before producing work, the Grok roles fall back to Terra as before and Sol falls back to `gpt-6.2-sol`.
 
 ## Local Bonsai tier
 
@@ -153,6 +167,7 @@ Every flag in the two grok commands does a job. Don't trim them.
 - **Luna has the same commit split.** `--sandbox workspace-write` can't reach a linked worktree's git index, so the `codex` wrapper commits. Don't add the git common dir as a writable root to get around this.
 - **Claude Code permissions confine `bonsai-implementer`.** It runs `claude-local -p --permission-mode acceptEdits --disallowedTools Bash,WebFetch,WebSearch --strict-mcp-config` from inside its worktree. Edits there go through. Anything outside needs an approval nobody is around to give, so it fails. Without Bash it has no shell to escape through, and `--strict-mcp-config` drops MCP servers. `acceptEdits` also overrides any looser `defaultMode` in the `claude-local` config. The wrapper commits.
 - **`sonnet-implementer` has no sandbox.** It is a native Claude subagent that only its instructions keep in its worktree. The session checks the main checkout after every Sonnet task and won't merge a task that wrote outside its tree. That catches a breach after it happens. It doesn't prevent one.
+- **The Antigravity roles use permission rules plus the terminal sandbox.** In this mode `grok-reviewer` and `sol` run with deny rules on `write_file(*)`, `command(*)`, `mcp(*)` and `execute_url(*)`. Those hold under `--dangerously-skip-permissions`, which is there only so headless runs don't stall. `grok-implementer` runs under `--sandbox`, which keeps shell commands in the worktree and temp dirs, with an allow rule for `write_file(<worktree>)` and a deny rule for `unsandboxed(*)`, and headless mode refuses anything not allowed, including Neon's requests to leave the sandbox. Never give the implementer `--dangerously-skip-permissions`, because it approves file writes outside the workspace. agy has no `--cwd`, so every agy launch `cd`s behind a `git rev-parse --show-toplevel` check that fails before agy starts if the `cd` was dropped. agy logs no sandbox event, so `/shipyard:doctor` probes both gates. A refused action ends a headless run with exit 0 and `jetski: no output produced`, which the wrappers treat as a failure.
 - **A built-in grok profile that can't apply only warns, then runs unconfined.** The wrappers look for that on stderr and in the `ProfileApplied` event in `~/.grok/sessions/sandbox-events.jsonl`, and refuse to commit when they find it. That check runs after the fact. To block the run up front, define a custom profile with a non-empty `deny` list in `.grok/sandbox.toml` and name it in the command. Grok then refuses to start when the profile is unknown, when `sandbox.toml` is malformed, or when `bubblewrap` is missing on Linux. A custom profile doesn't help with the kernel and entitlement failures that make a built-in profile fail open.
 
 ## Why cross-model

@@ -1,6 +1,6 @@
 ---
 name: grok-implementer
-description: Implement one routine but non-trivial task via the Grok CLI (grok-4.7, xhigh reasoning, write-enabled), with a Terra fallback via Codex if Grok fails before producing work. Use for plan tasks the planner marked ROUTINE; TRIVIAL ones to bonsai-implementer (or codex), EASY tasks to the codex agent, HARD ones to sonnet-implementer.
+description: Implement one routine but non-trivial task via the Grok CLI (grok-4.7, xhigh reasoning, write-enabled), or Gemini 4 Neon via the Antigravity CLI when ANTIGRAVITY_ENABLED is set, with a Terra fallback via Codex if Grok fails before producing work. Use for plan tasks the planner marked ROUTINE; TRIVIAL ones to bonsai-implementer (or codex), EASY tasks to the codex agent, HARD ones to sonnet-implementer.
 tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -31,7 +31,9 @@ For every task you receive:
    End the prompt with: *do not stage or commit anything; the wrapper
    handles git.* Task briefs often say "commit your work", and the CLI's
    sandbox blocks committing from a linked worktree, so a brief left unedited
-   sends it into a guaranteed failure.
+   sends it into a guaranteed failure. Under `ANTIGRAVITY_ENABLED`, also end
+   it with: *stay inside this worktree; do not install dependencies or write
+   anywhere else — anything outside is refused and ends the run.*
 
 2. Run `mktemp -d` and note the absolute path it prints — call it
    `<dir>` below, and use that literal path everywhere. (Don't rely on a
@@ -43,7 +45,9 @@ For every task you receive:
    command. Keeping the file outside the repository also means it cannot
    be committed. Delete the directory when the call returns.
 
-3. Confirm `grok models` lists `grok-4.7`, then run grok headless against
+3. Check `printenv ANTIGRAVITY_ENABLED` first; if it prints anything, use
+   the Antigravity paragraph below instead of grok. Otherwise confirm
+   `grok models` lists `grok-4.7`, then run grok headless against
    that file, never interactively:
 
    ```bash
@@ -51,6 +55,43 @@ For every task you receive:
      --model grok-4.7 --effort xhigh --always-approve --no-plan \
      --sandbox workspace --deny MCPTool
    ```
+
+   **With `ANTIGRAVITY_ENABLED` set** (`printenv ANTIGRAVITY_ENABLED` prints
+   anything), run Gemini 4 Neon through the Antigravity CLI instead of grok.
+   Confirm `agy --settings '{"modelProvider":"gemini"}' models` lists
+   `gemini-4-neon-xhigh` (`models` goes after `--settings`; the subcommand
+   rejects the flag), and that `[ -n "$GEMINI_API_KEY" ]` succeeds — never
+   print the key. Write `<dir>/settings.json` with the Write tool, where
+   `<worktree-real>` is what `realpath <worktree>` prints (allow rules match
+   the resolved path only; on macOS `/var/…` is really `/private/var/…`):
+
+   ```json
+   {"modelProvider":"gemini","permissions":{"allow":["read_file(*)","write_file(<worktree-real>)","command(*)"],"deny":["mcp(*)","unsandboxed(*)"]}}
+   ```
+
+   Then run:
+
+   ```bash
+   cd <worktree> && [ "$(git rev-parse --show-toplevel)" = "<worktree-real>" ] \
+     && agy -p "$(cat <dir>/prompt.md)" \
+     --model gemini-4-neon-xhigh --sandbox --settings <dir>/settings.json
+   ```
+
+   `--sandbox` keeps shell commands inside the working directory and the
+   temp dirs; the `write_file` allow rule keeps the file tool in the
+   worktree; headless mode refuses anything no rule allows. **Never add
+   `--dangerously-skip-permissions` here** — it approves file writes outside
+   the workspace. agy has no `--cwd` flag, so this launch `cd`s. The toplevel check makes a
+   dropped `cd` fail before agy starts, instead of running it in the
+   session's checkout; keep it all in one Bash command. Step 5's grok sandbox check does not apply to agy, which logs no
+   equivalent; `/shipyard:doctor` probes this confinement instead. agy exits 0 even when it produced nothing: output starting with
+   `jetski: no output produced` is a failure with no answer. A refused action ends the
+   run that way too, so treat it as a failed run under step 5. The Terra
+   fallback applies with Neon in Grok's place: `agy` missing,
+   `GEMINI_API_KEY` unset, the model not listed, the launch denied or rejected as `Argument list too long` (the prompt goes in as one argument), or a
+   non-zero exit or no-output line before producing work, with the same
+   dirty-worktree stop. Header: `gemini-4-neon (xhigh) via Antigravity CLI`,
+   or for a fallback `… — Neon fallback: <one-line reason>`.
 
 4. After the final CLI run, delete the prompt directory and record
    `git status --short` and `git diff --stat` before committing.
@@ -83,11 +124,13 @@ For every task you receive:
 7. Return the successful CLI's final answer verbatim, prefixed with a
    one-line header stating the model and reasoning level used, followed
    by the status and diffstat from step 4. When Terra answered, the header
-   must say `gpt-6.1-terra (high) via Codex CLI — Grok fallback: <one-line reason>`.
+   must say `gpt-6.1-terra (high) via Codex CLI — Grok fallback: <one-line reason>`
+   (`Neon fallback` under `ANTIGRAVITY_ENABLED`).
 
 Rules:
 
-- Always `--prompt-file`. Never launch the interactive TUI. `--no-plan`
+- Always `--prompt-file` for grok, and `-p "$(cat <dir>/prompt.md)"` for
+  agy, which reads no stdin. Never launch the interactive TUI. `--no-plan`
   matters: multi-file tasks are exactly what makes grok want plan mode, and a
   headless run has nobody to approve the exit.
 - `--sandbox workspace` is what confines grok. Be precise about the
@@ -136,7 +179,7 @@ Rules:
   Grok's `--cwd` flag or Codex's `--cd` flag rather than `cd <path> && ...`. A compound `cd`
   can trip the permission classifier, and when it does the bare command
   silently runs in the session's own directory — which on a worktree task
-  means writing to the wrong checkout.
+  means writing to the wrong checkout. The agy launch is the one exception: agy has no `--cwd`, so it uses the toplevel-checked `cd` shown above.
 - **Never end your turn while the CLI is still running.** A subagent turn
   that ends is finished: nothing collects the output, and the orchestrator
   receives your "I will wait for it" message *as the result*. This is the

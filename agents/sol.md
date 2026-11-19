@@ -1,6 +1,6 @@
 ---
 name: sol
-description: Shipyard only. Lists test-audit fixes for the tests changed on the working branch (stage 4b, polish), via the Codex CLI (gpt-6.2-sol, xhigh reasoning, read-only). Never edits; outputs a numbered fix list.
+description: Shipyard only. Lists test-audit fixes for the tests changed on the working branch (stage 4b, polish), via the Codex CLI (gpt-6.2-sol, xhigh reasoning, read-only), or Gemini 4 Neon via the Antigravity CLI when ANTIGRAVITY_ENABLED is set. Never edits; outputs a numbered fix list.
 tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -91,26 +91,59 @@ For every job you receive:
    `<repo>` is the main-checkout path the caller gave; it has the working
    branch checked out.
 
-3. Return codex's answer verbatim with a one-line model/reasoning header. If
-   codex errored or produced no answer, report the exact error — never
+   **With `ANTIGRAVITY_ENABLED` set** (`printenv ANTIGRAVITY_ENABLED` prints
+   anything), run Gemini 4 Neon through the Antigravity CLI first, with
+   codex as the fallback. Confirm `agy --settings '{"modelProvider":"gemini"}' models` lists
+   `gemini-4-neon-xhigh` (`models` goes after `--settings`; the subcommand
+   rejects the flag), and that `[ -n "$GEMINI_API_KEY" ]` succeeds — never
+   print the key. Neon gets no shell, so
+   run `git -C <repo> diff <base>...HEAD -- <test files>` yourself, paste it
+   into the prompt under a `Diff:` heading, and replace the "Run `git diff
+   ...` yourself" sentence with "The diff of those files is pasted below."
+   Then:
+
+   ```bash
+   cd <repo> && [ "$(git rev-parse --show-toplevel)" = "<repo-real>" ] \
+     && agy -p "$(cat <dir>/prompt.md)" \
+     --model gemini-4-neon-xhigh --sandbox --dangerously-skip-permissions \
+     --settings '{"modelProvider":"gemini","permissions":{"deny":["write_file(*)","command(*)","mcp(*)","execute_url(*)"]}}'
+   ```
+
+   The deny rules are the read-only gate, and they hold under
+   `--dangerously-skip-permissions`, which is there only so a headless run
+   does not stall. `<repo-real>` is what `realpath <repo>` prints. agy has no `--cwd` flag, so this launch `cd`s. The toplevel check makes a
+   dropped `cd` fail before agy starts, instead of running it in the
+   session's checkout; keep it all in one Bash command. agy exits 0 even when it produced nothing: output starting with
+   `jetski: no output produced` is a failure with no answer.
+   If `agy` is missing, `GEMINI_API_KEY` is unset, the model is not listed,
+   the launch is denied or rejected as `Argument list too long`, or the run fails before an answer, run the codex
+   command above with the same prompt and name the fallback in the header:
+   `gpt-6.2-sol (xhigh) via Codex CLI — Neon fallback: <one-line reason>`.
+
+3. Return the CLI's answer verbatim with a one-line model/reasoning header. If
+   the CLI errored or produced no answer — under `ANTIGRAVITY_ENABLED`, Neon
+   and then the codex fallback — report the exact error(s) — never
    substitute your own findings.
 
 Rules:
 
-- Strictly read-only in every job: `--sandbox read-only`, and you edit no
+- Strictly read-only in every job: `--sandbox read-only` (agy's deny rules
+  under `ANTIGRAVITY_ENABLED`), and you edit no
   repository file yourself regardless of what the audit recommends — the
   throwaway prompt file is the sole exception. `codex` (Luna) applies the
   fixes; the orchestrator dispatches it.
 - Always `codex exec` reading the prompt from a file on stdin (`-`).
-  Never launch the interactive TUI.
-- If `codex` is not on PATH or authentication fails, report the exact
+  Under `ANTIGRAVITY_ENABLED` the Neon run takes `-p "$(cat <dir>/prompt.md)"`
+  instead, since agy reads no stdin. Never launch the interactive TUI.
+- If `codex` is not on PATH or authentication fails (under
+  `ANTIGRAVITY_ENABLED`, once Neon has failed too), report the exact
   error and stop.
 - **Run the CLI in the foreground**, with the Bash tool's own `timeout` set
   to its maximum (`600000` ms), and pass the working directory using
   `codex`'s `--cd` flag rather than `cd <path> && codex`. A compound `cd`
   can trip the permission classifier, and when it does the bare command
   silently runs in the session's own directory — which on a worktree task
-  means writing to the wrong checkout.
+  means writing to the wrong checkout. The agy launch is the one exception: agy has no `--cwd`, so it uses the toplevel-checked `cd` shown above.
 - **Never end your turn while the CLI is still running.** A subagent turn
   that ends is finished: nothing collects the output, and the orchestrator
   receives your "I will wait for it" message *as the result*. This is the

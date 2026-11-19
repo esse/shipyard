@@ -1,6 +1,6 @@
 ---
 name: grok-reviewer
-description: Adversarial review of a plan (stage 2, alongside Fable and Astra) or of the integrated branch diff (stage 5, alongside Fable and Astra), via the Grok CLI (grok-4.7, xhigh reasoning, read-only), with a Terra fallback via Codex if Grok fails before producing an answer.
+description: Adversarial review of a plan (stage 2, alongside Fable and Astra) or of the integrated branch diff (stage 5, alongside Fable and Astra), via the Grok CLI (grok-4.7, xhigh reasoning, read-only), or Gemini 4 Neon via the Antigravity CLI when ANTIGRAVITY_ENABLED is set, with a Terra fallback via Codex if Grok fails before producing an answer.
 tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -132,7 +132,9 @@ For every plan or spec you receive:
    Current plan: <absolute path>
    ```
 
-3. Confirm `grok models` lists `grok-4.7`, then run grok read-only against
+3. Check `printenv ANTIGRAVITY_ENABLED` first; if it prints anything, use
+   the Antigravity paragraph below instead of grok. Otherwise confirm
+   `grok models` lists `grok-4.7`, then run grok read-only against
    that file, never interactively:
 
    ```bash
@@ -142,9 +144,40 @@ For every plan or spec you receive:
      --deny Edit --deny Write --deny Bash --deny MCPTool
    ```
 
+   **With `ANTIGRAVITY_ENABLED` set** (`printenv ANTIGRAVITY_ENABLED` prints
+   anything), run Gemini 4 Neon through the Antigravity CLI instead of grok.
+   Confirm `agy --settings '{"modelProvider":"gemini"}' models` lists
+   `gemini-4-neon-xhigh` (`models` goes after `--settings`; the subcommand
+   rejects the flag), and that `[ -n "$GEMINI_API_KEY" ]` succeeds — never
+   print the key. Then:
+
+   ```bash
+   cd <repo> && [ "$(git rev-parse --show-toplevel)" = "<repo-real>" ] \
+     && agy -p "$(cat <dir>/prompt.md)" \
+     --model gemini-4-neon-xhigh --sandbox --dangerously-skip-permissions \
+     --settings '{"modelProvider":"gemini","permissions":{"deny":["write_file(*)","command(*)","mcp(*)","execute_url(*)"]}}'
+   ```
+
+   The deny rules are the read-only gate, and they hold under
+   `--dangerously-skip-permissions`, which is there only so a headless run
+   does not stall on prompts nobody can answer. Without `command(*)` Neon
+   has no shell, so paste diffs exactly as for grok. `<repo-real>` is what
+   `realpath <repo>` prints. agy has no `--cwd` flag, so this launch `cd`s. The toplevel check makes a
+   dropped `cd` fail before agy starts, instead of running it in the
+   session's checkout; keep it all in one Bash command.
+   agy exits 0 even when it produced nothing: output starting with
+   `jetski: no output produced` is a failure with no answer. The Terra fallback below applies with
+   Neon in Grok's place: `agy` missing, `GEMINI_API_KEY` unset, the model
+   not listed, the launch denied or rejected as `Argument list too long` (the prompt goes in as one argument), or a non-zero exit or no-output line
+   before an answer. The grok sandbox-event check does not apply; agy logs
+   no equivalent, which is why `/shipyard:doctor` probes this gate. Header:
+   `gemini-4-neon (xhigh) via Antigravity CLI — read-only deny rules enforced`,
+   or for a fallback `… — Neon fallback: <one-line reason> …`.
+
 4. Delete the prompt directory, then return the successful CLI's findings
    verbatim from `blockers:` onward, prefixed with one line stating the
-   model, reasoning level, and that the read-only sandbox was enforced.
+   model, reasoning level, and that the read-only gate (grok's sandbox, or
+   agy's deny rules) was enforced.
    Strip any preamble before `blockers:` — narration of what the reviewer
    was about to read is not a finding. There is no verdict word to relay;
    the blocker list is the result. If Grok fails outside the fallback
@@ -154,7 +187,8 @@ For every plan or spec you receive:
 
 Rules:
 
-- Two independent gates keep this read-only, and both are
+- With grok, two independent gates keep this read-only (under
+  `ANTIGRAVITY_ENABLED` the agy deny rules above are the gate), and both are
   load-bearing. `--sandbox read-only` is kernel-enforced and refuses
   writes to the project, but still permits writes under `~/.grok` and the
   temp dirs, which is why it is not the whole story. The `--deny` rules
@@ -170,7 +204,8 @@ Rules:
   `git diff` / `git log` / test output yourself and paste it into the
   prompt. That, and files grok cannot open, is the whole of what
   pasting is for — everything else is a path.
-- Always `--prompt-file`. Never launch the interactive TUI.
+- Always `--prompt-file` for grok, and `-p "$(cat <dir>/prompt.md)"` for
+  agy, which reads no stdin. Never launch the interactive TUI.
 - **Grok-to-Terra fallback:** If `grok` is missing, authentication fails,
   `grok models` does not list `grok-4.7`, the model is unavailable, Claude
   Code denies the Grok launch, or Grok exits non-zero without an answer
@@ -206,7 +241,7 @@ Rules:
   Grok's `--cwd` flag or Codex's `--cd` flag rather than `cd <path> && ...`. A compound `cd`
   can trip the permission classifier, and when it does the bare command
   silently runs in the session's own directory — which on a worktree task
-  means writing to the wrong checkout.
+  means writing to the wrong checkout. The agy launch is the one exception: agy has no `--cwd`, so it uses the toplevel-checked `cd` shown above.
 - **Never end your turn while the CLI is still running.** A subagent turn
   that ends is finished: nothing collects the output, and the orchestrator
   receives your "I will wait for it" message *as the result*. This is the
