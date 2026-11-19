@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "shipyard",
-      "description": "Pinned models from three labs. Astra plans, Fable, Grok and a fresh Astra attack the plan, Luna, Grok and Sonnet build in parallel worktrees, Opus reviews each task, Sol audits the tests, Simplifier trims the code, and Fable, Astra and Grok attack the branch before the PR. Boatyard does the same with Opus planning and Sonnet reviewing tasks.",
+      "description": "Pinned models from three labs. Astra plans, Fable, Grok (or Gemini Neon) and a fresh Astra attack the plan, Luna, Grok (or Neon) and Sonnet build in parallel worktrees, Opus reviews each task, Sol audits the tests, Simplifier trims the code, and Fable, Astra and Grok (or Neon) attack the branch before the PR. Boatyard does the same with Opus planning and Sonnet reviewing tasks.",
       "source": "./",
       "category": "workflow"
     }

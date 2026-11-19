@@ -22,7 +22,7 @@ Every review hunts for reasons to reject. The gate is the blocker list, not an e
 
 Run `/shipyard:doctor` before you rely on any of this. It runs the exact commands the wrappers use, and confirms that each read-only reviewer really refuses a write. A broken gate with a green round-trip looks healthy everywhere else, so that last check matters most.
 
-If `~/.claude/agents/` already holds a file named after any agent in this plugin, delete it after installing. The plugin ships `astra`, `sol`, `fable`, `opus`, `codex`, `opus-reviewer`, `simplifier`, `sonnet-reviewer`, `sonnet-implementer`, `guest-implementer`, `guest-reviewer` and `mythos`, and duplicates get confusing. Shipyard 0.4 and earlier shipped a `sol-reviewer` agent. `astra` replaced it, and it has nothing to do with today's `sol`, so delete any stale copy.
+If `~/.claude/agents/` already holds a file named after any agent in this plugin, delete it after installing. The plugin ships `astra`, `sol`, `fable`, `opus`, `codex`, `opus-reviewer`, `simplifier`, `sonnet-reviewer`, `sonnet-implementer`, `guest-implementer`, `guest-reviewer` and `mythos`, and duplicates get confusing. Shipyard 0.4 and earlier shipped a `sol-reviewer` agent. `astra` replaced it, and it has nothing to do with today's `sol`, so delete any stale copy. Shipyard 0.13 and earlier shipped `grok-implementer` and `grok-reviewer`, now `guest-implementer` and `guest-reviewer` because those seats run Grok or Neon, and an opt-in `bonsai-implementer`, now removed. Delete stale copies of all three, and drop `CLAUDE_LOCAL_AVAILABLE` from your settings.
 
 ## The cast
 
