@@ -212,6 +212,10 @@ Rules:
 
   ```bash
   codex exec --model gpt-6.1-terra -c model_reasoning_effort="high" \
+    -c 'mcp_servers={}' --disable plugins --disable apps --disable remote_plugin \
+    --disable plugin_sharing --disable browser_use --disable browser_use_external \
+    --disable computer_use --disable image_generation --disable in_app_browser \
+    --disable skill_search --disable skill_mcp_dependency_install \
     --sandbox read-only --skip-git-repo-check --cd <repo> - \
     < <dir>/prompt.md
   ```

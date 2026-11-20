@@ -170,6 +170,10 @@ For every job you receive:
 
    ```bash
    codex exec --model gpt-6.2-astra -c model_reasoning_effort="medium" \
+     -c 'mcp_servers={}' --disable plugins --disable apps --disable remote_plugin \
+     --disable plugin_sharing --disable browser_use --disable browser_use_external \
+     --disable computer_use --disable image_generation --disable in_app_browser \
+     --disable skill_search --disable skill_mcp_dependency_install \
      --sandbox read-only --skip-git-repo-check - \
      < <dir>/prompt.md
    ```

@@ -47,6 +47,10 @@ For every task you receive:
 
    ```bash
    codex exec --model gpt-6-luna -c model_reasoning_effort="max" \
+     -c 'mcp_servers={}' --disable plugins --disable apps --disable remote_plugin \
+     --disable plugin_sharing --disable browser_use --disable browser_use_external \
+     --disable computer_use --disable image_generation --disable in_app_browser \
+     --disable skill_search --disable skill_mcp_dependency_install \
      --sandbox workspace-write -c approval_policy='"never"' \
      -c sandbox_workspace_write.network_access=true \
      --skip-git-repo-check --cd <worktree> - \

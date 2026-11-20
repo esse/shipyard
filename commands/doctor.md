@@ -21,7 +21,10 @@ Do the work in a throwaway directory so nothing touches the user's tree:
    `-c approval_policy="never"`, not `--approve-for-me` (which conflicts with
    `--sandbox` since 0.153 and, alone, auto-approves writes outside the
    workspace). Do not pass `--full-auto`; it was removed in 0.147 and is not
-   in the wrappers.
+   in the wrappers. Every wrapper also runs Codex "dry" (`mcp_servers={}` plus
+   `--disable` for plugins, apps, browser, computer use, image generation and
+   skill search): measured ~34% faster and ~30% fewer input tokens. An unknown
+   `--disable` name is a hard error, so a renamed feature fails checks 4–6.
 4. **Delegation round-trip in a linked worktree**, Luna's exact invocation,
    then a **host** commit — the path the wrapper uses, because
    `workspace-write` cannot write a linked worktree's git index:
@@ -39,6 +42,10 @@ Do the work in a throwaway directory so nothing touches the user's tree:
    git -C "$repo" worktree add "$wt" -b shipyard-doctor
    printf 'Create ok.txt containing OK here, then reply with just: DONE\n' > "$d/p.md"
    codex exec --model gpt-6-luna -c model_reasoning_effort="low" \
+       -c 'mcp_servers={}' --disable plugins --disable apps --disable remote_plugin \
+       --disable plugin_sharing --disable browser_use --disable browser_use_external \
+       --disable computer_use --disable image_generation --disable in_app_browser \
+       --disable skill_search --disable skill_mcp_dependency_install \
        --sandbox workspace-write -c approval_policy='"never"' \
        -c sandbox_workspace_write.network_access=true \
        --skip-git-repo-check --cd "$wt" - < "$d/p.md"
@@ -63,6 +70,10 @@ Do the work in a throwaway directory so nothing touches the user's tree:
    ```bash
    d=$(mktemp -d) && printf 'Reply with just: DONE\n' > "$d/p.md" \
      && cd "$d" && codex exec --model gpt-6.2-astra -c model_reasoning_effort="low" \
+       -c 'mcp_servers={}' --disable plugins --disable apps --disable remote_plugin \
+       --disable plugin_sharing --disable browser_use --disable browser_use_external \
+       --disable computer_use --disable image_generation --disable in_app_browser \
+       --disable skill_search --disable skill_mcp_dependency_install \
        --sandbox read-only --skip-git-repo-check - < "$d/p.md" \
      ; echo "exit=$?"; rm -rf "$d"
    ```
@@ -72,6 +83,10 @@ Do the work in a throwaway directory so nothing touches the user's tree:
    ```bash
    d=$(mktemp -d) && printf 'Reply with just: DONE\n' > "$d/p.md" \
      && cd "$d" && codex exec --model gpt-6.2-sol -c model_reasoning_effort="low" \
+       -c 'mcp_servers={}' --disable plugins --disable apps --disable remote_plugin \
+       --disable plugin_sharing --disable browser_use --disable browser_use_external \
+       --disable computer_use --disable image_generation --disable in_app_browser \
+       --disable skill_search --disable skill_mcp_dependency_install \
        --sandbox read-only --skip-git-repo-check - < "$d/p.md" \
      ; echo "exit=$?"; rm -rf "$d"
    ```
@@ -94,6 +109,10 @@ expected rather than a fault.
    ```bash
    d=$(mktemp -d) && printf 'Reply with just: DONE\n' > "$d/p.md" \
      && cd "$d" && codex exec --model gpt-6.1-terra -c model_reasoning_effort="low" \
+       -c 'mcp_servers={}' --disable plugins --disable apps --disable remote_plugin \
+       --disable plugin_sharing --disable browser_use --disable browser_use_external \
+       --disable computer_use --disable image_generation --disable in_app_browser \
+       --disable skill_search --disable skill_mcp_dependency_install \
        --sandbox read-only --skip-git-repo-check - < "$d/p.md" \
      ; echo "exit=$?"; rm -rf "$d"
    ```
