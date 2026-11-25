@@ -60,6 +60,10 @@ When unsure, the session picks shipyard. It tells you the call and the reason in
 
 The planner tags every task, and the tag picks the implementer.
 
+The proposed trials for Neon on each tier and Carbon in the plan-review seat
+are in [Model role experiments](docs/model-role-experiments.md). They do not
+change the routing below.
+
 | Tag | Means | Implementer |
 | --- | --- | --- |
 | `EASY` | Fully prescribed, and copies a pattern already in the codebase | Luna |
