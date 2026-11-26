@@ -7,6 +7,16 @@ description: Use when a spec, design, or implementation plan is ready to build a
 
 Five stages, in order, with a polish stage (4b) between 4 and 5 and a final test run closing 5. No skipping, no reordering.
 
+## Choose the dispatch path
+
+In Claude Code with the Shipyard plugin installed, use its native agents
+as described below. In Codex, Antigravity, and other shell-capable hosts,
+read [dispatch.md](dispatch.md) before triage and use its portable launcher
+for every named agent dispatch, including retries, fallbacks, and audits.
+Treat `Agent(subagent_type: ...)` and Claude-specific waiting and commit
+instructions below as instructions for the native path. The portable lead
+collects worker results and commits in the designated worktrees.
+
 ## Stage 0 — triage: shipyard or boatyard
 
 Before anything else, even before stage 1, decide which pipeline the spec gets:

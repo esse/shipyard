@@ -1,6 +1,6 @@
 # Shipyard
 
-Shipyard is a shipping pipeline for Claude Code. One model writes the plan, models from other labs try to kill it, a crew of agents builds every independent task in parallel git worktrees, and nothing reaches a PR until two reviewers from two labs have attacked the integrated diff and the full test suite has passed on it.
+Shipyard is a shipping pipeline for Codex, Antigravity, and Claude Code. One model writes the plan, models from other labs try to kill it, a crew of agents builds every independent task in parallel git worktrees, and nothing reaches a PR until two reviewers from two labs have attacked the integrated diff and the full test suite has passed on it.
 
 Most changes don't need all of that. Before planning, the session triages the spec. Large or hard work gets the full shipyard. Everything else goes to [boatyard](#boatyard), which keeps the same stages and gates with a smaller, cheaper crew.
 
@@ -8,19 +8,107 @@ Every review hunts for reasons to reject. The gate is the blocker list, not an e
 
 ## Install
 
+### Claude Code
+
+For the published plugin, run these inside Claude Code:
+
 ```
 /plugin marketplace add esse/shipyard
 /plugin install shipyard@shipyard
 ```
 
+To use a local Shipyard checkout, launch Claude Code with
+`claude --plugin-dir /absolute/path/to/shipyard`.
+
+### Codex
+
+Keep a Shipyard checkout on disk. Set `SHIPYARD_ROOT` to its absolute path
+and create a user-level skill entry that loads the workflow from that checkout:
+
+```sh
+SHIPYARD_ROOT=/absolute/path/to/shipyard
+skill_dir="$HOME/.agents/skills/shipping-plans-with-agents"
+mkdir -p "$(dirname "$skill_dir")" &&
+mkdir "$skill_dir" &&
+cat > "$skill_dir/SKILL.md" <<EOF
+---
+name: shipping-plans-with-agents
+description: Use when asked to run Shipyard or Boatyard to plan, review, build in worktrees, and verify a change with multiple agent providers.
+---
+
+Read and follow the canonical Shipyard skill at $SHIPYARD_ROOT/skills/shipping-plans-with-agents/SKILL.md.
+Resolve its supporting files relative to that checkout and use portable dispatch.
+EOF
+```
+
+Start a new Codex session and invoke `$shipping-plans-with-agents` with your spec.
+
+### Antigravity CLI
+
+Link the skill directory into Antigravity's global skills directory. Keeping
+the link to the checkout gives the dispatcher access to the agent definitions.
+
+```sh
+SHIPYARD_ROOT=/absolute/path/to/shipyard
+skill_dir="$HOME/.gemini/antigravity-cli/skills"
+mkdir -p "$skill_dir" &&
+ln -s "$SHIPYARD_ROOT/skills/shipping-plans-with-agents" "$skill_dir/"
+```
+
+Start a new Antigravity CLI session, check `/skills` for
+`shipping-plans-with-agents`, and ask the lead to use it with your spec.
+
+### Antigravity IDE
+
+Use the Codex skill-entry example with
+`skill_dir="$HOME/.gemini/config/skills/shipping-plans-with-agents"`.
+Open the target workspace and ask Antigravity to use Shipyard with your spec.
+See [Antigravity IDE's skill locations](https://codelabs.developers.google.com/getting-started-agy-ide).
+
+### Other shell-capable harnesses
+
+Point the lead at `/absolute/path/to/shipyard/skills/shipping-plans-with-agents/SKILL.md`.
+For persistent discovery, add a skill entry that points to that file in the
+harness's own skill directory, as in the Codex example.
+
+## Start a session
+
+From the repository you want to work on, start the host with your chosen
+lead model. For example:
+
+```sh
+codex --model gpt-6.1-terra
+# Or start an Antigravity session
+agy --model gemini-4-neon-xhigh
+```
+
+Give the lead your spec and ask it to use Shipyard. In a desktop session,
+make sure the checkout is readable and the terminal can run the provider
+CLIs. The [portable dispatcher](skills/shipping-plans-with-agents/dispatch.md)
+launches fresh Codex, Antigravity, Claude, and opt-in Grok workers on their
+pinned models. The lead runs independent dispatches concurrently, collects
+their results, checks the worktrees, and commits. The lead also runs the
+final test suite. The same stage order and gates apply in each harness.
+
+Set optional switches in the environment that starts the lead. For example:
+
+```sh
+SHIPYARD_GROK_REVIEW=1 codex --model gpt-6.1-terra
+```
+
+`ANTIGRAVITY_ENABLED=1` selects Neon for Shipyard's test audit, with Sol as
+fallback. `SHIPYARD_SECURITY_SCAN=1` adds Mythos to branch review.
+
 ## Requirements
 
 - **Codex CLI 0.147 or newer**, on `PATH` and logged in with `codex login`. Astra, Sol and Luna shell out to `codex exec`, and `guest-implementer` uses it for its Terra fallback. Astra writes the plan, so nothing runs without Codex. Luna runs with `--sandbox workspace-write -c approval_policy="never"`. Don't pass `--full-auto`, which 0.147 removed, or `--approve-for-me`, which conflicts with `--sandbox` since 0.153.
-- **Antigravity CLI 1.5.12 or newer** (`agy`), signed in with a Gemini subscription or with `GEMINI_API_KEY` exported in the environment Claude Code starts from. `guest-implementer` runs Gemini 4 Neon through it for `ROUTINE` and `HARD` tasks, see [Gemini 4 Neon via Antigravity](#gemini-4-neon-via-antigravity). Without it, `ROUTINE` tasks fall back to Terra and `HARD` tasks to Sonnet.
+- **Antigravity CLI 1.5.12 or newer** (`agy`), signed in with a Gemini subscription or with `GEMINI_API_KEY` exported in the environment the lead session starts from. `guest-implementer` runs Gemini 4 Neon through it for `ROUTINE` and `HARD` tasks, see [Gemini 4 Neon via Antigravity](#gemini-4-neon-via-antigravity). Without it, `ROUTINE` tasks fall back to Terra and `HARD` tasks to Sonnet.
 - **Grok CLI**, only if you turn on the [Grok review](#grok-review): on `PATH`, signed in, with `grok-4.7` listed by `grok models`.
+- **Claude Code CLI**, on `PATH` and signed in, for the Claude seats in portable sessions.
+- **Python 3.9+**, for the portable dispatcher.
 - **Git**, for the per-task worktrees.
 
-Run `/shipyard:doctor` before you rely on any of this. It runs the exact commands the wrappers use, and confirms that each read-only reviewer really refuses a write. A broken gate with a green round-trip looks healthy everywhere else, so that last check matters most.
+In Claude Code, run `/shipyard:doctor` before relying on the plugin. It exercises the wrapper commands and probes their CLI sandbox rules. For other hosts, use the [portable dispatch checks](skills/shipping-plans-with-agents/dispatch.md#collect-the-result). To test routing and fallback locally without provider credentials, run `python3 -m unittest discover -s tests`.
 
 If `~/.claude/agents/` already holds a file named after any agent in this plugin, delete it after installing. The plugin ships `astra`, `sol`, `fable`, `opus`, `codex`, `opus-reviewer`, `simplifier`, `sonnet-reviewer`, `sonnet-implementer`, `guest-implementer`, `mythos` and `grok`, and duplicates get confusing. Shipyard 0.4 and earlier shipped a `sol-reviewer` agent. `astra` replaced it, and it has nothing to do with today's `sol`, so delete any stale copy. Shipyard 0.13 and earlier shipped `grok-implementer` and `grok-reviewer`, now `guest-implementer` and `guest-reviewer` because those seats run Grok or Neon, and an opt-in `bonsai-implementer`, now removed. Delete stale copies of all three, and drop `CLAUDE_LOCAL_AVAILABLE` from your settings. Shipyard 0.15 dropped Grok as a default seat: delete any stale `guest-reviewer`, and drop `SHIPYARD_NO_GROK` from your settings. Grok now reviews only when you opt in with `SHIPYARD_GROK_REVIEW`.
 
@@ -43,9 +131,9 @@ If `~/.claude/agents/` already holds a file named after any agent in this plugin
 | Mythos | `mythos` | Claude Mythos 5.2, opt-in | read-only | both: security scan in branch review |
 | Grok | `grok` | grok-4.7, xhigh reasoning, opt-in | read-only | both: plan and branch review, with `SHIPYARD_GROK_REVIEW` |
 
-Each agent definition pins its model. The Claude agents pin it in frontmatter, the CLI wrappers in a command-line argument. **Your session model doesn't matter.** Start on Opus, Sonnet or Haiku and Astra still writes the plan, because every stage is a dispatch to a pinned agent. Your session orchestrates. It dispatches, merges, resolves conflicts and talks to you.
+Each agent definition pins its model. The Claude agents pin it in frontmatter, the CLI wrappers in a command-line argument. **Your session model doesn't matter.** Start on Terra, Neon, or Opus and Astra still writes the Shipyard plan, because every stage is a dispatch to a pinned agent. Your session orchestrates. It dispatches, merges, resolves conflicts and talks to you.
 
-Swap the model IDs in `agents/*.md` for whatever your accounts offer. If your build doesn't recognise the `fable` or `sonnet` alias, use `claude-fable-5` or `claude-sonnet-5-5`. On the Codex side, `agents/astra.md` pins `gpt-6.2-astra` and `agents/sol.md` pins `gpt-6.2-sol`.
+For the plugin, model IDs are in `agents/*.md`. Portable CLI model IDs are in `dispatch.py`, with Claude models read from the agent definitions. If your build doesn't recognise the `fable` or `sonnet` alias, use `claude-fable-5` or `claude-sonnet-5-5`. On the Codex side, `agents/astra.md` pins `gpt-6.2-astra` and `agents/sol.md` pins `gpt-6.2-sol`.
 
 ## Triage
 
@@ -75,7 +163,7 @@ The routing below follows a quick pass of the
 
 **2. Plan review.** Fable and a fresh Astra attack the plan in parallel. The fresh Astra is a new dispatch and a new `codex exec`. It gets the spec and the plan text and never sees the planning run, so it reads its own plan as a stranger's. Grok joins them when the Grok review is on. Blockers get fixed before anyone writes code. Review stops after two rounds, a full one and then a delta on what changed. Leftover nits ride along in the implementer briefs instead of starting a third round.
 
-**3. Implement.** The session creates one worktree per task and dispatches every agent in one message. Luna runs sandboxed to its worktree. Neon runs under agy's sandbox, which leaks shell writes, and Sonnet has no sandbox at all, so the session checks the main checkout after each of their tasks, see [How the roles are confined](#how-the-roles-are-confined). The Codex and Antigravity wrappers commit for their CLIs, which can't write the main `.git`. Sonnet commits its own work.
+**3. Implement.** The session creates one worktree per task and dispatches independent tasks in parallel. It checks the main checkout for unexpected changes after Neon and Sonnet tasks. In the Claude Code plugin the wrappers and native Sonnet agent commit. In portable sessions the lead checks and commits the worker's unstaged edits. See [How the roles are confined](#how-the-roles-are-confined).
 
 **4. Task review.** Opus reviews each finished task against the plan step that spawned it. `FIX` sends it back to the same implementer in the same worktree. `APPROVE` lets it merge. A task is done when it is approved and merged, not before.
 
@@ -126,7 +214,7 @@ The boatyard rules live in `skills/shipping-plans-with-agents/boatyard.md`.
 
 Why these seats: on the [Artificial Analysis coding-agent index](https://artificialanalysis.ai/agents/coding-agents) (November 2026), Antigravity with Neon xhigh scores 58.6, level with Claude Fable 5.2 xhigh (58.5) and Opus 5.5 max (58.2) at the top. In the November 2026 quick pass of the [model role experiments](docs/model-role-experiments.md), Neon xhigh matched Sonnet's acceptance rate on `HARD` tasks with higher design scores, though on only two cases. As a third reviewer, Gemini caught nothing Fable and Astra missed and raised more false blockers, so the review panel has no Gemini seat. The Gemini quota is weekly and shared across models, so expect the fallbacks to run when it is spent.
 
-It needs `agy` 1.5.12 or newer, signed in either way agy supports: a Gemini subscription login, or `GEMINI_API_KEY` in the environment Claude Code starts from. The wrappers don't pick a backend, so agy uses whichever sign-in you set up. For `ANTIGRAVITY_ENABLED`, any non-empty value turns it on. If Neon is missing, out of quota or fails before producing work, `ROUTINE` tasks fall back to Terra (`gpt-6.1-terra`, high reasoning, through Codex), `HARD` tasks go to `sonnet-implementer`, and Sol falls back to `gpt-6.2-sol`. The wrapper stops instead of falling back if a failed Neon run left the worktree dirty.
+It needs `agy` 1.5.12 or newer, signed in either way agy supports: a Gemini subscription login, or `GEMINI_API_KEY` in the environment the lead session starts from. The wrappers don't pick a backend, so agy uses whichever sign-in you set up. For `ANTIGRAVITY_ENABLED`, any non-empty value turns it on. If Neon is missing, out of quota or fails before producing work, `ROUTINE` tasks fall back to Terra (`gpt-6.1-terra`, high reasoning, through Codex), `HARD` tasks go to `sonnet-implementer`, and Sol falls back to `gpt-6.2-sol`. The wrapper stops instead of falling back if a failed Neon run left the worktree dirty.
 
 ## Security scan
 
@@ -152,10 +240,10 @@ Any non-empty value turns it on. There is no fallback model: if Grok is unavaila
 
 Every flag in the CLI commands does a job. Don't trim them.
 
-- **Luna can't commit its own work.** `--sandbox workspace-write` can't reach a linked worktree's git index, so the `codex` wrapper commits. Don't add the git common dir as a writable root to get around this.
+- **Luna edits only the task worktree.** Its `--sandbox workspace-write` sandbox blocks writes to the linked worktree's git index. The native `codex` wrapper or portable lead commits the edits.
 - **Grok reviews under two gates.** `--sandbox read-only` is kernel-enforced but still lets grok write under `~/.grok` and the temp dirs, so `--deny Edit --deny Write --deny Bash --deny MCPTool` closes the rest; `--deny MCPTool` is the one that stops a write-capable MCP tool. The wrapper treats a sandbox profile that failed to apply as a hard error.
-- **`sonnet-implementer` has no sandbox.** It is a native Claude subagent that only its instructions keep in its worktree. The session checks the main checkout after every Sonnet task and won't merge a task that wrote outside its tree. That catches a breach after it happens. It doesn't prevent one.
-- **The Antigravity roles use permission rules plus the terminal sandbox.** Under `ANTIGRAVITY_ENABLED`, `sol` runs with deny rules on `write_file(*)`, `command(*)`, `mcp(*)` and `execute_url(*)`. Those hold under `--dangerously-skip-permissions`, which is there only so headless runs don't stall. `guest-implementer` runs under `--sandbox`, which keeps shell commands in the worktree and temp dirs, with an allow rule for `write_file(<worktree>)` and a deny rule for `unsandboxed(*)`, and headless mode refuses anything not allowed, including Neon's requests to leave the sandbox. That is the design; in practice `/shipyard:doctor`'s implementer probe has seen Neon's shell commands write outside the worktree, so the session checks the main checkout after every Neon task, as for Sonnet. Committing from a linked worktree writes the main checkout's `.git`, so the wrapper agent commits for Neon. Never give the implementer `--dangerously-skip-permissions`, because it approves file writes outside the workspace. agy has no `--cwd`, so every agy launch `cd`s behind a `git rev-parse --show-toplevel` check that fails before agy starts if the `cd` was dropped. agy logs no sandbox event, so `/shipyard:doctor` probes both gates. A refused action ends a headless run with exit 0 and `jetski: no output produced`, which the wrappers treat as a failure.
+- **Claude workers use different access rules by harness.** Native Claude Code subagents follow their role instructions. Portable reviewers have only read tools. Portable Sonnet can edit through Claude's restricted file tools, and the lead runs its tests and commits.
+- **The Antigravity roles use permission rules plus the terminal sandbox.** Under `ANTIGRAVITY_ENABLED`, `sol` runs with deny rules on `write_file(*)`, `command(*)`, `mcp(*)` and `execute_url(*)`. Those hold under `--dangerously-skip-permissions`, which is there only so headless runs don't stall. `guest-implementer` runs under `--sandbox`, which keeps shell commands in the worktree and temp dirs, with an allow rule for `write_file(<worktree>)` and a deny rule for `unsandboxed(*)`, and headless mode refuses anything not allowed, including Neon's requests to leave the sandbox. That is the design; in practice `/shipyard:doctor`'s implementer probe has seen Neon's shell commands write outside the worktree, so the session checks the main checkout after every Neon task, as for Sonnet. Committing from a linked worktree writes the main checkout's `.git`, so the native wrapper or portable lead commits for Neon. Never give the implementer `--dangerously-skip-permissions`, because it approves file writes outside the workspace. agy has no `--cwd`, so the native wrapper checks its `cd` with `git rev-parse --show-toplevel`. The portable dispatcher starts agy directly in the validated target checkout. agy logs no sandbox event, so `/shipyard:doctor` probes both gates. A refused action ends a headless run with exit 0 and `jetski: no output produced`, which the wrappers treat as a failure.
 
 ## Why cross-model
 
@@ -167,7 +255,7 @@ Boatyard trades some of this away on purpose. Fresh dispatches still keep its re
 
 ## Adapting it
 
-Everything is markdown.
+The workflow and role briefs are Markdown. The portable CLI launcher is `skills/shipping-plans-with-agents/dispatch.py`.
 
 - **No Codex account?** Point `agents/codex.md`, `agents/astra.md` and `agents/sol.md` at a different CLI, or swap them for plain Claude subagents. The pipeline still works, but planning and two review seats then come from the same lab.
 - **One task?** Stage 3 becomes "implement in a worktree". Every review gate still applies.
