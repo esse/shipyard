@@ -117,7 +117,7 @@ If `~/.claude/agents/` already holds a file named after any agent in this plugin
 | Name | Agent | Model | Access | Used in |
 | --- | --- | --- | --- | --- |
 | Astra | `astra` | gpt-6.2-astra, medium reasoning | read-only | shipyard: plan, plan and branch review |
-| Sol | `sol` | gpt-6.2-sol, xhigh reasoning | read-only | shipyard: task review, test audit |
+| Sol | `sol` | gpt-6.2-sol, high reasoning | read-only | shipyard: task review, test audit |
 | Fable | `fable` | Claude Fable | read-only | both: plan and branch review |
 | Opus | `opus` | Claude Opus | read-only | boatyard: plan, plan and branch review |
 | Opus | `opus-reviewer` | Claude Opus | read-only | shipyard: task review fallback, or with `OPUS_REVIEWS_TASK`; both: polish review |

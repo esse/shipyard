@@ -1,6 +1,6 @@
 ---
 name: sol
-description: Shipyard only. Adversarially reviews one completed implementation task against its plan step (stage 4, default task reviewer), and lists test-audit fixes for the tests changed on the working branch (stage 4b, polish), via the Codex CLI (gpt-6.2-sol, xhigh reasoning, read-only). The test audit runs on Gemini 4 Neon via the Antigravity CLI when ANTIGRAVITY_ENABLED is set; task review always runs on Sol. Never edits.
+description: Shipyard only. Adversarially reviews one completed implementation task against its plan step (stage 4, default task reviewer), and lists test-audit fixes for the tests changed on the working branch (stage 4b, polish), via the Codex CLI (gpt-6.2-sol, high reasoning, read-only). The test audit runs on Gemini 4 Neon via the Antigravity CLI when ANTIGRAVITY_ENABLED is set; task review always runs on Sol. Never edits.
 tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -145,7 +145,7 @@ For every test-audit job you receive:
    Command:
 
    ```bash
-   codex exec --model gpt-6.2-sol -c model_reasoning_effort="xhigh" \
+   codex exec --model gpt-6.2-sol -c model_reasoning_effort="high" \
      -c 'mcp_servers={}' --disable plugins --disable apps --disable remote_plugin \
      --disable plugin_sharing --disable browser_use --disable browser_use_external \
      --disable computer_use --disable image_generation --disable in_app_browser \
@@ -183,7 +183,7 @@ For every test-audit job you receive:
    If `agy` is missing, the model is not listed,
    the launch is denied or rejected as `Argument list too long`, or the run fails before an answer, run the codex
    command above with the same prompt and name the fallback in the header:
-   `gpt-6.2-sol (xhigh) via Codex CLI — Neon fallback: <one-line reason>`.
+   `gpt-6.2-sol (high) via Codex CLI — Neon fallback: <one-line reason>`.
 
 3. Return the CLI's answer verbatim with a one-line model/reasoning header. If
    the CLI errored or produced no answer — under `ANTIGRAVITY_ENABLED`, Neon

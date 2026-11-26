@@ -16,7 +16,7 @@ CLAUDE_ROLES = (
 )
 CODEX_ROLES = {
     "astra": ("gpt-6.2-astra", "medium"),
-    "sol": ("gpt-6.2-sol", "xhigh"),
+    "sol": ("gpt-6.2-sol", "high"),
     "codex": ("gpt-6-luna", "max"),
     "terra": ("gpt-6.1-terra", "high"),
 }
