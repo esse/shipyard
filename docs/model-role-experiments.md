@@ -191,6 +191,49 @@ for stage 5.” Update the relevant agent wrappers, skill, README, and doctor
 probes together, then run the whole-pipeline trial once more on the exact
 new configuration.
 
+### 2026-11-26 quick pass (indicative, no confidence intervals)
+
+There were 15 merged PRs from public repos, 5 per tier. These were chi,
+urfave/cli, semver, click, attrs, boltons and more-itertools. Each agent ran
+in a history-free repo, the upstream tests were hidden and applied only
+after it finished, and a blinded Opus judge graded each diff. Grok had no
+balance, so it was not measured. The weekly Gemini quota ran out before
+most Gemini arms finished.
+
+| Seat | Result |
+| --- | --- |
+| `EASY` | Luna max 5/5 accepted; Neon medium 4/4 |
+| `ROUTINE` | Neon high 1/1, Neon xhigh 1/2; Grok not run |
+| `HARD` | Sonnet 2/5 accepted (judge's design score 3.6/5); Neon xhigh 1/2 (4.5/5); most failures in both were hidden-test details the spec never stated |
+| Stage-5 third reviewer | Carbon high and Neon xhigh each caught 6/6 planted defects, with 0 that Fable + Astra (also 6/6) missed; 7 and 13 false blockers against Fable's 3, at 13–18× the wall time |
+| Test audit | Sol 5/5 planted junk tests found, 0 wrong deletions; Neon not run |
+| Planner | Not compared; Carbon's plans hit the quota |
+
+The implementer confinement probe failed for every Gemini model: under
+`--sandbox` with `command(*)`, shell writes reached `$HOME`.
+
+Decision: Neon xhigh takes `ROUTINE` and `HARD`, with Terra and Sonnet as
+fallbacks. Grok leaves the pipeline, and the third reviewer seat goes with
+it. Planning, plan review, branch review and the test audit stay as they
+were. The user accepted the confinement exposure; the orchestrator checks the
+main checkout after every Neon task.
+
+### 2026-11-26 follow-up: Gemini as planner and reviewer (Neon xhigh vs Carbon high)
+
+The same cases, now through `GEMINI_API_KEY` (agy `"modelProvider":"gemini"`),
+compared only Neon xhigh against Carbon high.
+
+| Seat | Result |
+| --- | --- |
+| Planner (blind pairwise, Opus judge) | Neon 2, Carbon 2 (semver and click-3884 to Neon; chi-1157 and urfave-2479 to Carbon). Three specs got no pair: Neon hit the 1 h limit on chi-1195 and the API spend rate on click-3877; Carbon failed click-3896 three times and got a 503 on click-3877. Both wrote 17–28K-character plans, 4–5× Astra's, in 10–38 min, and sometimes cut off mid-task. Astra vs Carbon earlier: also 2–2. |
+| Stage-2 plan review (one defect planted in each of 7 Astra plans) | Neon caught 7/7 with 13 false blockers, median ~10 min; Carbon 6/6 with 14, median ~14 min, and timed out once at 30 min. Fable and Astra were not run on this set. |
+| Stage-5 hard set (6 subtle-bug diffs, 3 clean) | Stopped before any run finished: no reviewer had beaten Fable + Astra so far, and the user judged the seat not worth the wall time. |
+
+Decision: no Gemini planner or reviewer. Astra keeps planning; Fable and
+Astra keep stages 2 and 5. Grok returns only as an opt-in third reviewer at
+stages 2 and 5 (`SHIPYARD_GROK_REVIEW`), for users who want another lab's
+review anyway; it was not re-measured.
+
 ## Current external facts to verify again at run time
 
 Google's [Antigravity model guide](https://antigravity.google/docs/models)

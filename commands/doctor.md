@@ -1,5 +1,5 @@
 ---
-description: Check that the Codex, Grok and Antigravity CLIs actually work for delegation, and that the read-only reviewer gates really deny writes.
+description: Check that the Codex, Antigravity and (when enabled) Grok CLIs actually work for delegation, and that the read-only reviewer gates really deny writes.
 allowed-tools: Bash, Read
 ---
 
@@ -91,20 +91,10 @@ Do the work in a throwaway directory so nothing touches the user's tree:
      ; echo "exit=$?"; rm -rf "$d"
    ```
 
-## Grok (guest-implementer, guest-reviewer)
+## Terra (ROUTINE fallback for guest-implementer)
 
-If `printenv ANTIGRAVITY_ENABLED` prints a non-empty value, run only check 3
-(Terra) here and say so: Grok no longer runs, and `SHIPYARD_NO_GROK` is
-ignored. Otherwise skip this whole section and say so if
-`printenv SHIPYARD_NO_GROK` prints a
-non-empty value — Grok is off for this project, and a missing CLI is then
-expected rather than a fault.
-
-1. **On PATH** — `command -v grok`.
-2. **Authenticated, and grok-4.7 available** — `grok models`. Fail if the model
-   the agents pin is absent from the list.
-3. **Terra fallback available** — the read-only fallback form; pass if the
-   command returns `DONE`:
+1. **Terra available** — the fallback model answers; pass if the command
+   returns `DONE`:
 
    ```bash
    d=$(mktemp -d) && printf 'Reply with just: DONE\n' > "$d/p.md" \
@@ -117,28 +107,29 @@ expected rather than a fault.
      ; echo "exit=$?"; rm -rf "$d"
    ```
 
-4. **Delegation round-trip**, the implementer's exact form:
+## Grok (opt-in reviewer)
+
+Skip this section and say so unless `printenv SHIPYARD_GROK_REVIEW` prints a
+non-empty value.
+
+1. **On PATH** — `command -v grok`.
+2. **Authenticated, and grok-4.7 available** — `grok models`. Fail if
+   `grok-4.7` is absent.
+3. **Round-trip and sandbox enforced** — the reviewer's exact flags:
 
    ```bash
-   d=$(mktemp -d) && printf 'Create ok.txt containing OK here, then reply with just: DONE\n' > "$d/p.md" \
-     && cd "$d" && grok --prompt-file "$d/p.md" --model grok-4.7 --effort low \
-       --always-approve --no-plan --sandbox workspace --deny MCPTool \
-     ; echo "exit=$?"; cat "$d/ok.txt" 2>&1; rm -rf "$d"
+   d=$(mktemp -d) && printf 'Reply with just: DONE\n' > "$d/p.md" \
+     && grok --prompt-file "$d/p.md" --cwd "$d" --model grok-4.7 --effort low --no-plan \
+       --sandbox read-only --tools read_file,list_dir,grep \
+       --deny Edit --deny Write --deny Bash --deny MCPTool \
+     ; echo "exit=$?"; rm -rf "$d"; tail -1 ~/.grok/sessions/sandbox-events.jsonl
    ```
 
-   Same pass condition: `DONE` returned and `ok.txt` present.
-5. **Sandbox actually enforced** — after that run, the last event in
-   `~/.grok/sessions/sandbox-events.jsonl` must be `ProfileApplied` with
-   `"enforced": true`. A profile that failed to apply only warns, so this is the
-   check that catches it:
-
-   ```bash
-   tail -1 ~/.grok/sessions/sandbox-events.jsonl
-   ```
-
-6. **The reviewer's read-only gate really denies** — the security-critical one.
-   Run from the project directory, with the reviewer's exact flags, as one
-   command so the temp path stays in scope:
+   Pass means `DONE` came back and the last event is `ProfileApplied` with
+   `"enforced": true`. A profile that failed to apply only warns, so the
+   event is the check that catches it.
+4. **The read-only gate really denies** — the security-critical one. Run
+   from the project directory, as one command:
 
    ```bash
    d=$(mktemp -d) && printf 'Create PROBE-DELETEME.txt containing x in the current directory. Report the exact error if it fails.\n' > "$d/p.md" \
@@ -148,22 +139,19 @@ expected rather than a fault.
      ; echo "exit=$?"; ls PROBE-DELETEME.txt 2>&1; rm -rf "$d"
    ```
 
-   **Pass means `ls` says the file does not exist** and grok reported a denial
-   (`Operation not permitted`, or a `deny rule` message). If the file appears,
-   delete it and report a failure loudly: the reviewer is not read-only, so
-   stage 2 and stage 5 have no gate.
+   **Pass means `ls` says the file does not exist** and grok reported a
+   denial. If the file appears, delete it and report a failure loudly: the
+   Grok reviewer is not read-only.
+5. **MCP is denied** — if `grok mcp list` shows any enabled server, ask grok,
+   with the flags above, to actually *call* one of its MCP tools and expect
+   `Denied by permission policy: deny rule on mcp`. Do not judge from grok's
+   own list of tools. Skip with a note if no server is configured.
 
-7. **MCP is denied** — if `grok mcp list` shows any enabled server, confirm the
-   deny rule covers it by asking grok, with the reviewer flags above, to
-   actually *call* one of its MCP tools. Expect `Denied by permission policy:
-   deny rule on mcp`. Do not judge this from grok's own account of which tools
-   it has: it lists `use_tool` as available even when the deny rule stops every
-   call. Skip with a note if no server is configured.
+## Antigravity (Gemini 4 Neon: guest-implementer, and sol when enabled)
 
-## Antigravity (Gemini 4 Neon in the grok and sol roles)
-
-Skip this section and say so unless `printenv ANTIGRAVITY_ENABLED` prints a
-non-empty value.
+Always run checks 1–3 and 5: `guest-implementer` runs Neon for every
+`ROUTINE` and `HARD` task. Run check 4 only if `printenv ANTIGRAVITY_ENABLED`
+prints a non-empty value, and say so when you skip it.
 
 1. **On PATH, new enough** — `command -v agy` and `agy --version`. Fail
    below 1.5.12, the first release with Gemini 4 Neon.
@@ -172,9 +160,9 @@ non-empty value.
 3. **Model available** — `agy models`
    must list `gemini-4-neon-xhigh` and `gemini-4-neon-low`, the one the
    probes below use.
-4. **The reviewer's read-only gate really denies** — the security-critical
-   one, shared by `guest-reviewer` and `sol`. Run from the project
-   directory with the reviewers' exact flags:
+4. **Sol's read-only gate really denies** — the security-critical one
+   under `ANTIGRAVITY_ENABLED`. Run from the project directory with Sol's
+   exact Antigravity flags:
 
    ```bash
    agy -p 'Create PROBE-DELETEME.txt containing x in the current directory with your file write tool, then run the shell command: touch PROBE2-DELETEME.txt. Report the exact error for each.' \
@@ -184,8 +172,8 @@ non-empty value.
    ```
 
    **Pass means `ls` finds neither file** and agy reported a deny rule. If
-   either appears, delete it and report a failure loudly: stage 2, stage 5
-   and the test audit have no read-only gate.
+   either appears, delete it and report a failure loudly: the test audit has no read-only
+   gate.
 5. **Implementer round-trip and confinement** — the implementer's exact
    flags, minus the toplevel guard (the probe directory is not a git repo). The outside target sits in `$HOME`, because the temp dirs are
    writable by design:
@@ -216,18 +204,21 @@ restatement of the expectation. Then:
   Astra writes the plan, so this fails at stage 1, before anything else. Do not
   offer to substitute another model for Astra, Sol or Luna.
 - **Only Sol's check fails** — the shipyard test-audit pass (stage 4b) is blocked; boatyard and every other stage still run.
-- **Grok fails before producing work while enabled** — if the Terra fallback
-  check passes, the Grok roles still run through Terra. If both Grok and Terra
-  fail, stages 2, 3 and 5 are blocked; name `SHIPYARD_NO_GROK=1` (ignored under `ANTIGRAVITY_ENABLED`) as the user's
-  choice to disable both Grok roles and their Terra fallback, and do not set it
-  for them. A Grok sandbox enforcement failure remains a hard stop even if
-  Terra passes.
-- **Antigravity fails while enabled** — if the Terra check passes, the two
-  Grok roles still run through Terra, and if Sol's check passes, the test
-  audit runs on gpt-6.2-sol. If a fallback fails too, its stages are
-  blocked; name unsetting `ANTIGRAVITY_ENABLED` as the user's choice and do
-  not unset it for them. A failed gate check (4 or 5) is a hard stop even
-  when the fallbacks pass.
+- **Antigravity fails (checks 1–3)** — `ROUTINE` tasks still run through
+  Terra if its check passes, and `HARD` tasks through `sonnet-implementer`.
+  If Terra fails too, `ROUTINE` tasks are blocked. Under
+  `ANTIGRAVITY_ENABLED`, the test audit runs on gpt-6.2-sol if Sol's check
+  passes; name unsetting the variable as the user's choice and do not unset
+  it for them.
+- **A gate check (4 or 5) fails** — report it loudly. Check 4 failing is a
+  hard stop for the Antigravity test audit. Check 5 failing means Neon
+  implementer runs are not confined to their worktree; say so plainly, and
+  that the orchestrator's main-checkout check after each Neon task is then
+  the only gate.
+- **Grok fails while `SHIPYARD_GROK_REVIEW` is set** — stages 2 and 5 are
+  blocked, because an enabled Grok review is a gate with no fallback. Name
+  unsetting the variable as the user's choice and do not unset it for
+  them. A failed gate check (3's sandbox event, 4 or 5) is a hard stop.
 - **A gate check fails while its round-trip passes** — the worst outcome, and
   say so plainly: delegation works, so the pipeline will appear healthy while
   running an agent that is not confined the way its own definition claims.

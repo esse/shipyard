@@ -1,6 +1,6 @@
 ---
 name: mythos
-description: Opt-in adversarial security scan of the integrated branch diff (stage 5, alongside Fable, Astra and Grok), always on the Mythos model. Enabled by SHIPYARD_SECURITY_SCAN. Read-only.
+description: Opt-in adversarial security scan of the integrated branch diff (stage 5, alongside Fable and Astra), always on the Mythos model. Enabled by SHIPYARD_SECURITY_SCAN. Read-only.
 model: claude-mythos-5-2
 tools: Read, Glob, Grep, Bash
 ---

@@ -9,28 +9,26 @@ switches — except the cast below.
 | Stage | Shipyard | Boatyard |
 |---|---|---|
 | 1. Plan | `astra` | `opus` (job 1) |
-| 2. Plan review | `fable` + fresh `astra` + `guest-reviewer` | `fable` + fresh `opus` (job 2) |
-| 3. Implement | by tag, `HARD` → `sonnet-implementer` | by tag, no `HARD` |
+| 2. Plan review | `fable` + fresh `astra` (+ `grok`) | `fable` + fresh `opus` (job 2) (+ `grok`) |
+| 3. Implement | by tag, `ROUTINE` and `HARD` → `guest-implementer` (Neon) | by tag, no `HARD` |
 | 4. Task review | `opus-reviewer` | `sonnet-reviewer` |
 | 4b. Test audit | `sol` lists → `codex` applies → `opus-reviewer` | `simplifier` (test-audit job) lists → `codex` applies → `opus-reviewer` |
 | 4b. Simplify | `simplifier` (simplify job) → `codex` → `opus-reviewer` | same as shipyard |
-| 5. Branch review | `fable` + `astra` + `guest-reviewer` (+ `mythos`) | fresh `opus` (job 3) + `fable` (+ `mythos`) |
+| 5. Branch review | `fable` + `astra` (+ `mythos`, `grok`) | fresh `opus` (job 3) + `fable` (+ `mythos`, `grok`) |
 | 5. Final tests | orchestrator runs the full suite | same as shipyard |
 
-Routing in stage 3: `EASY` → `codex`, `ROUTINE` →
-`guest-implementer` (`codex` when `SHIPYARD_NO_GROK` is set and
-`ANTIGRAVITY_ENABLED` is not). `SHIPYARD_NO_GROK` changes nothing else
-here — boatyard has no Grok reviewer. `ANTIGRAVITY_ENABLED` only moves
-`guest-implementer` onto Gemini 4 Neon, since boatyard has no Grok reviewer
-and no Sol. `SHIPYARD_SECURITY_SCAN` adds `mythos` to stage 5 exactly as in
-shipyard.
+Routing in stage 3: `EASY` → `codex`, `ROUTINE` → `guest-implementer`
+(Neon, with its Terra fallback). `ANTIGRAVITY_ENABLED` changes nothing
+here, since boatyard has no Sol. `SHIPYARD_SECURITY_SCAN` adds `mythos` to
+stage 5, and `SHIPYARD_GROK_REVIEW` adds `grok` to stages 2 and 5, exactly as
+in shipyard.
 
 Stage 4b runs exactly as in `SKILL.md`, with `simplifier` in place of `sol`
 for the test audit. `opus-reviewer` judges both polish commits here too; this
 is the one boatyard use of `opus-reviewer`. Sol is not used in boatyard.
 Stage-5 repairs, including final-test-run repairs, are reviewed by
 `sonnet-reviewer` in boatyard. The first stage-5 brief and every delta brief
-for each enabled boatyard reviewer, including `mythos` when enabled, carry
+for each enabled boatyard reviewer, including `mythos` and `grok` when enabled, carry
 both polish fix lists and their statuses (applied, with any items Luna
 declined identified; skipped; dropped; or reverted), labelled as authorised
 stage-4b scope.
