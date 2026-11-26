@@ -136,17 +136,17 @@ Set `SHIPYARD_SECURITY_SCAN=1` and the branch review gains Mythos, pinned to `cl
 { "env": { "SHIPYARD_SECURITY_SCAN": "1" } }
 ```
 
-Any non-empty value turns it on. Once it is on, an unavailable Mythos model stops the pipeline instead of skipping the scan. The agent pins the full model ID because the bare `mythos` alias doesn't resolve.
+Any non-empty value turns it on. If the Mythos model is unavailable, the session warns you that the scan did not run and carries on without it. The agent pins the full model ID because the bare `mythos` alias doesn't resolve.
 
 ## Grok review
 
-Set `SHIPYARD_GROK_REVIEW=1` and Grok (`grok-4.7`, xhigh reasoning, read-only) joins plan review and branch review as one more adversarial reviewer, in shipyard and boatyard alike. Its blockers gate like everyone else's, and every fold or repair gets a delta re-review from it. It is off by default: in the [November 2026 quick pass](docs/model-role-experiments.md), no third reviewer caught anything Fable and Astra missed, so turn it on when you want another lab's eyes on a change anyway.
+Set `SHIPYARD_GROK_REVIEW=1` and Grok (`grok-4.7`, xhigh reasoning, read-only) joins plan review and branch review as one more adversarial reviewer, in shipyard and boatyard alike. When it runs, its blockers gate like everyone else's, and every fold or repair gets a delta re-review from it. It is off by default: in the [November 2026 quick pass](docs/model-role-experiments.md), no third reviewer caught anything Fable and Astra missed, so turn it on when you want another lab's eyes on a change anyway.
 
 ```json
 { "env": { "SHIPYARD_GROK_REVIEW": "1" } }
 ```
 
-Any non-empty value turns it on. Once it is on, an unavailable Grok stops the pipeline instead of skipping the review; there is no fallback model.
+Any non-empty value turns it on. There is no fallback model: if Grok is unavailable (CLI missing, signed out, out of credit), the session warns you that the review did not run and carries on with Fable and Astra. A Grok sandbox that fails to apply still stops the pipeline, because that is a broken read-only gate, not an outage.
 
 ## How the roles are confined
 

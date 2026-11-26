@@ -215,10 +215,11 @@ restatement of the expectation. Then:
   implementer runs are not confined to their worktree; say so plainly, and
   that the orchestrator's main-checkout check after each Neon task is then
   the only gate.
-- **Grok fails while `SHIPYARD_GROK_REVIEW` is set** — stages 2 and 5 are
-  blocked, because an enabled Grok review is a gate with no fallback. Name
-  unsetting the variable as the user's choice and do not unset it for
-  them. A failed gate check (3's sandbox event, 4 or 5) is a hard stop.
+- **Grok fails while `SHIPYARD_GROK_REVIEW` is set (checks 1–2, or 3's
+  round-trip)** — the pipeline still runs; stages 2 and 5 go on without
+  Grok, with a warning each time. A failed gate check (3's sandbox event,
+  4 or 5) is a hard stop for the Grok review, since it would run
+  unconfined.
 - **A gate check fails while its round-trip passes** — the worst outcome, and
   say so plainly: delegation works, so the pipeline will appear healthy while
   running an agent that is not confined the way its own definition claims.

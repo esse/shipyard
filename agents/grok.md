@@ -1,6 +1,6 @@
 ---
 name: grok
-description: Opt-in adversarial review of a plan (stage 2) or of the integrated branch diff (stage 5), alongside the other reviewers, via the Grok CLI (grok-4.7, xhigh reasoning, read-only). Enabled by SHIPYARD_GROK_REVIEW.
+description: Opt-in adversarial review of a plan (stage 2) or of the integrated branch diff (stage 5), alongside the other reviewers, via the Grok CLI (grok-4.7, xhigh reasoning, read-only). Enabled by SHIPYARD_GROK_REVIEW; skipped with a warning when Grok is unavailable.
 tools: Bash, Read, Write, Glob, Grep
 ---
 
@@ -151,9 +151,10 @@ For every plan or spec you receive:
 5. **Grok unavailable** — `grok` missing, signed out, `grok-4.7` not
    listed, the launch denied, or a non-zero exit or no answer. Report
    the exact error as a first line of `GROK UNAVAILABLE: <reason>` and
-   stop. There is no fallback: the user opted into a Grok review, so the
-   orchestrator stops rather than skipping it. Never substitute your own
-   review, and do not install, update, or log in on your own.
+   stop. There is no fallback model; the orchestrator warns the user and
+   goes on without this review. Never substitute your own review, and do
+   not install, update, or log in on your own. A sandbox that did not
+   apply is not "unavailable" — report it as the hard error below.
 
 Rules:
 
