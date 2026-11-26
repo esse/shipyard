@@ -161,8 +161,12 @@ def main():
     parser.add_argument("brief", type=Path)
     parser.add_argument("--tier", choices=["ROUTINE", "HARD"],
                         help="required for guest-implementer")
+    parser.add_argument("--task-review", action="store_true",
+                        help="sol only: stage-4 task review, always on Sol")
     args = parser.parse_args()
     role = args.role
+    if args.task_review and role != "sol":
+        parser.error("--task-review applies only to sol")
     if (role == "guest-implementer") != bool(args.tier):
         parser.error("--tier is required for guest-implementer and applies only to that role")
     cwd = args.checkout.resolve(strict=True)
@@ -200,7 +204,7 @@ def main():
                 raise WorkerError(f"NEON UNAVAILABLE: {error}") from error
             print(f"Neon unavailable, trying Terra: {error}", file=sys.stderr)
             header, output = codex("terra", cwd, brief, write=True)
-    elif role == "sol" and os.environ.get("ANTIGRAVITY_ENABLED"):
+    elif role == "sol" and os.environ.get("ANTIGRAVITY_ENABLED") and not args.task_review:
         try:
             header, output = neon(cwd, brief, write=False)
         except WorkerError as error:

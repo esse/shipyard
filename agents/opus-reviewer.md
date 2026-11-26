@@ -1,6 +1,6 @@
 ---
 name: opus-reviewer
-description: Adversarial review of one completed implementation task against its plan step, or of one stage-4b polish commit against its fix list. MUST BE USED after each shipyard task finishes, and after each polish pass in shipyard and boatyard, before the work is considered done. Read-only.
+description: Adversarial review of one completed implementation task against its plan step (shipyard stage 4, when sol is unavailable or OPUS_REVIEWS_TASK is set), or of one stage-4b polish commit against its fix list. MUST BE USED after each polish pass in shipyard and boatyard, before the work is considered done. Read-only.
 model: opus
 tools: Read, Glob, Grep, Bash
 ---

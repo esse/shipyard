@@ -108,6 +108,15 @@ class DispatchTest(unittest.TestCase):
         self.assertEqual(neon[2][-1], self.brief.read_text())
         self.assertIn("MCPTool", grok[2])
 
+    def test_sol_task_review_stays_on_sol_under_antigravity(self):
+        with patch.dict(os.environ, ANTIGRAVITY_ENABLED="1"):
+            self.dispatch("sol", self.worktree, "--task-review")
+        (call,) = self.calls()
+        self.assertEqual(call[0], "codex")
+        self.assertIn("gpt-6.2-sol", call[2])
+        self.assertIn("read-only", call[2])
+        self.assertEqual(call[2][call[2].index("--cd") + 1], str(self.worktree))
+
     def test_implementation_and_fallback_use_task_worktree(self):
         with patch.dict(os.environ, SHIPYARD_TEST_NEON="unavailable"):
             self.dispatch("guest-implementer", self.worktree, "--tier", "ROUTINE")

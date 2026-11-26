@@ -203,7 +203,7 @@ restatement of the expectation. Then:
 - **Codex fails** — stages 1, 2, 3, 4b and 5 are blocked; the pipeline cannot run.
   Astra writes the plan, so this fails at stage 1, before anything else. Do not
   offer to substitute another model for Astra, Sol or Luna.
-- **Only Sol's check fails** — the shipyard test-audit pass (stage 4b) is blocked; boatyard and every other stage still run.
+- **Only Sol's check fails** — the shipyard test-audit pass (stage 4b) is blocked, and stage-4 task reviews fall back to Opus; boatyard and every other stage still run.
 - **Antigravity fails (checks 1–3)** — `ROUTINE` tasks still run through
   Terra if its check passes, and `HARD` tasks through `sonnet-implementer`.
   If Terra fails too, `ROUTINE` tasks are blocked. Under

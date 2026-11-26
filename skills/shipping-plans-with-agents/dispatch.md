@@ -15,7 +15,8 @@ python3 /path/to/shipyard/skills/shipping-plans-with-agents/dispatch.py ROLE /ab
 ```
 
 `ROLE` is the agent name in the cast. Add `--tier ROUTINE` or `--tier HARD`
-for `guest-implementer`. The checkout argument is the working checkout for
+for `guest-implementer`, and `--task-review` for `sol`'s task-review job,
+which keeps it on gpt-6.2-sol even under `ANTIGRAVITY_ENABLED`. The checkout argument is the working checkout for
 planning, branch review, and polish lists, and the task worktree for
 implementation and task review. The lead needs permission to run the CLI and
 its provider subprocesses, reach their services, and manage the worktrees
@@ -45,7 +46,8 @@ expected output format before treating a review as complete.
 
 - The launcher prints the model and answer on stdout. Nonzero exits leave
   all gates pending. A `GROK UNAVAILABLE:` error follows the existing
-  opt-in warning path. A missing read-only gate or malformed review stops
+  opt-in warning path. A failed `sol --task-review` run sends that review to
+  `opus-reviewer` with a one-line warning. A missing read-only gate or malformed review stops
   the gate. For Mythos, only an explicit model-unavailable error follows
   the opt-in warning path.
 - The dispatcher tries Terra for ROUTINE work if Neon fails while its

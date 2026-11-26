@@ -11,15 +11,15 @@ switches — except the cast below.
 | 1. Plan | `astra` | `opus` (job 1) |
 | 2. Plan review | `fable` + fresh `astra` (+ `grok`) | `fable` + fresh `opus` (job 2) (+ `grok`) |
 | 3. Implement | by tag, `ROUTINE` and `HARD` → `guest-implementer` (Neon) | by tag, no `HARD` |
-| 4. Task review | `opus-reviewer` | `sonnet-reviewer` |
+| 4. Task review | `sol` (task-review job; `opus-reviewer` on fallback or `OPUS_REVIEWS_TASK`) | `sonnet-reviewer` |
 | 4b. Test audit | `sol` lists → `codex` applies → `opus-reviewer` | `simplifier` (test-audit job) lists → `codex` applies → `opus-reviewer` |
 | 4b. Simplify | `simplifier` (simplify job) → `codex` → `opus-reviewer` | same as shipyard |
 | 5. Branch review | `fable` + `astra` (+ `mythos`, `grok`) | fresh `opus` (job 3) + `fable` (+ `mythos`, `grok`) |
 | 5. Final tests | orchestrator runs the full suite | same as shipyard |
 
 Routing in stage 3: `EASY` → `codex`, `ROUTINE` → `guest-implementer`
-(Neon, with its Terra fallback). `ANTIGRAVITY_ENABLED` changes nothing
-here, since boatyard has no Sol. `SHIPYARD_SECURITY_SCAN` adds `mythos` to
+(Neon, with its Terra fallback). `ANTIGRAVITY_ENABLED` and `OPUS_REVIEWS_TASK`
+change nothing here, since boatyard has no Sol. `SHIPYARD_SECURITY_SCAN` adds `mythos` to
 stage 5, and `SHIPYARD_GROK_REVIEW` adds `grok` to stages 2 and 5, exactly as
 in shipyard.
 

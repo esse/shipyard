@@ -97,7 +97,7 @@ SHIPYARD_GROK_REVIEW=1 codex --model gpt-6.1-terra
 ```
 
 `ANTIGRAVITY_ENABLED=1` selects Neon for Shipyard's test audit, with Sol as
-fallback. `SHIPYARD_SECURITY_SCAN=1` adds Mythos to branch review.
+fallback. `OPUS_REVIEWS_TASK=1` makes Opus, not Sol, review each Shipyard task. `SHIPYARD_SECURITY_SCAN=1` adds Mythos to branch review.
 
 ## Requirements
 
@@ -117,10 +117,10 @@ If `~/.claude/agents/` already holds a file named after any agent in this plugin
 | Name | Agent | Model | Access | Used in |
 | --- | --- | --- | --- | --- |
 | Astra | `astra` | gpt-6.2-astra, medium reasoning | read-only | shipyard: plan, plan and branch review |
-| Sol | `sol` | gpt-6.2-sol, xhigh reasoning | read-only | shipyard: test audit |
+| Sol | `sol` | gpt-6.2-sol, xhigh reasoning | read-only | shipyard: task review, test audit |
 | Fable | `fable` | Claude Fable | read-only | both: plan and branch review |
 | Opus | `opus` | Claude Opus | read-only | boatyard: plan, plan and branch review |
-| Opus | `opus-reviewer` | Claude Opus | read-only | shipyard: task review; both: polish review |
+| Opus | `opus-reviewer` | Claude Opus | read-only | shipyard: task review fallback, or with `OPUS_REVIEWS_TASK`; both: polish review |
 | Simplifier | `simplifier` | Claude Opus | read-only | both: simplify; boatyard: test audit |
 | Sonnet | `sonnet-reviewer` | Claude Sonnet | read-only | boatyard: task review |
 | Luna | `codex` | gpt-6-luna, max reasoning | write | both: `EASY` tasks, polish fixes, fallbacks |
@@ -165,11 +165,11 @@ The routing below follows a quick pass of the
 
 **3. Implement.** The session creates one worktree per task and dispatches independent tasks in parallel. It checks the main checkout for unexpected changes after Neon and Sonnet tasks. In the Claude Code plugin the wrappers and native Sonnet agent commit. In portable sessions the lead checks and commits the worker's unstaged edits. See [How the roles are confined](#how-the-roles-are-confined).
 
-**4. Task review.** Opus reviews each finished task against the plan step that spawned it. `FIX` sends it back to the same implementer in the same worktree. `APPROVE` lets it merge. A task is done when it is approved and merged, not before.
+**4. Task review.** Sol reviews each finished task against the plan step that spawned it. If Sol can't run, Opus takes that review and the session warns you; set `OPUS_REVIEWS_TASK=1` to always use Opus. Stage-5 repairs get the same reviewer. `FIX` sends it back to the same implementer in the same worktree. `APPROVE` lets it merge. A task is done when it is approved and merged, not before.
 
 **4b. Polish.** Two passes run in order, test audit and then simplify. Sol lists fixes for the tests the branch added or changed, against the [test-audit rubric](#test-audit). Simplifier then lists simplifications for all changed code. The listers never edit. Luna applies each non-empty list in a fresh worktree as one commit and may decline items that would change behaviour, as long as it says why. Opus judges that commit against the list. A pass that still fails after one fix round gets dropped with a one-line note. Task commits never get dropped. The session skips the test audit when no tests changed and says so.
 
-**5. Branch review.** Fable and Astra attack the integrated diff in parallel, joined by Mythos when the security scan is on and by Grok when the Grok review is on. They see both polish lists with their outcomes. Any accepted blocker goes through a repair, an Opus review, and a delta re-review by every reviewer, not just the one who raised it. Once nobody has blockers, the session runs the project's full test suite. A failure goes through the same repair loop. The PR opens only when the reviewers are clear and the suite is green on the same diff. If the project has no suite, the session says so.
+**5. Branch review.** Fable and Astra attack the integrated diff in parallel, joined by Mythos when the security scan is on and by Grok when the Grok review is on. They see both polish lists with their outcomes. Any accepted blocker goes through a repair, a task review, and a delta re-review by every reviewer, not just the one who raised it. Once nobody has blockers, the session runs the project's full test suite. A failure goes through the same repair loop. The PR opens only when the reviewers are clear and the suite is green on the same diff. If the project has no suite, the session says so.
 
 The full instructions live in `skills/shipping-plans-with-agents/SKILL.md`. Your session loads it when a plan is ready to build, or when you say "ship this with shipyard".
 
@@ -192,14 +192,14 @@ Boatyard runs the same stages and gates with a smaller crew. Every shipyard rule
 | 1. Plan | Astra | Opus |
 | 2. Plan review | Fable, fresh Astra, plus Grok if on | Fable, fresh Opus, plus Grok if on |
 | 3. Implement | Luna or Neon by tag | Luna or Neon by tag |
-| 4. Task review | Opus | Sonnet |
+| 4. Task review | Sol, Opus fallback | Sonnet |
 | 4b. Polish | Sol audits tests, Simplifier simplifies, Opus judges | Simplifier does both, Opus judges |
 | 5. Branch review | Fable, Astra, plus Mythos and Grok if on | fresh Opus, Fable, plus Mythos and Grok if on |
 | 5. Final tests | full suite, run by the session | same |
 
 - **The Opus reviews are fresh dispatches.** They get the spec and the plan or diff, never the planning run, so the reviewer doesn't inherit the author's blind spots.
 - **A `HARD` task means triage got it wrong.** If the plan, a plan reviewer or a branch fix calls a task `HARD`, boatyard stops, names the task and the reason, and restarts in shipyard from stage 1. Merged work stays on the branch.
-- **The switches work the same.** `SHIPYARD_SECURITY_SCAN` adds Mythos to the branch review, and `SHIPYARD_GROK_REVIEW` adds Grok to plan and branch review. `ANTIGRAVITY_ENABLED` does nothing here, since boatyard has no Sol.
+- **The switches work the same.** `SHIPYARD_SECURITY_SCAN` adds Mythos to the branch review, and `SHIPYARD_GROK_REVIEW` adds Grok to plan and branch review. `ANTIGRAVITY_ENABLED` and `OPUS_REVIEWS_TASK` do nothing here, since boatyard has no Sol.
 - **Boatyard gives up cross-lab review.** Anthropic models do all of its planning and reviewing. That buys speed and cost, which is why large or hard work still goes to shipyard.
 
 The boatyard rules live in `skills/shipping-plans-with-agents/boatyard.md`.
