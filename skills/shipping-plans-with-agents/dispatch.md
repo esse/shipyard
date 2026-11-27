@@ -16,7 +16,8 @@ python3 /path/to/shipyard/skills/shipping-plans-with-agents/dispatch.py ROLE /ab
 
 `ROLE` is the agent name in the cast. Add `--tier ROUTINE` or `--tier HARD`
 for `guest-implementer`, and `--task-review` for `sol`'s task-review job,
-which keeps it on gpt-6.2-sol even under `ANTIGRAVITY_ENABLED`. The checkout argument is the working checkout for
+which runs on gpt-6.2-sol; `sol`'s test audit and `simplifier` run on Neon
+with a Sol fallback. The checkout argument is the working checkout for
 planning, branch review, and polish lists, and the task worktree for
 implementation and task review. The lead needs permission to run the CLI and
 its provider subprocesses, reach their services, and manage the worktrees
@@ -25,14 +26,14 @@ require approval.
 
 Write each brief to a separate temporary file with a file tool. Give the
 worker absolute paths, the stage or job, the constraints and the definition
-of done. For `astra`, `sol`, and `grok`, use the inner prompt and job
+of done. For `astra`, `sol`, `simplifier`, and `grok`, use the inner prompt and job
 instructions in the corresponding `agents/*.md` from the same Shipyard
 checkout. The launcher supplies the commands and, for Claude workers, the
 role instructions. The implementation brief must name the tests to run and
-say that the caller commits. Claude, Grok, and Neon in the Sol seat have
+say that the caller commits. Claude, Grok, and the Neon polish listers have
 no shell on read-only jobs. Include the exact diff, git history excerpts, or
-test output they need. In particular, when `ANTIGRAVITY_ENABLED` is set,
-supply the changed-test diff to `sol` in its brief and point the worker at
+test output they need. In particular, supply the changed-file diff to
+`sol` (test audit) and `simplifier` in their briefs and point the worker at
 that diff.
 
 Launch independent calls together using the host's concurrent tools or

@@ -12,20 +12,20 @@ switches — except the cast below.
 | 2. Plan review | `fable` + fresh `astra` (+ `grok`) | `fable` + fresh `opus` (job 2) (+ `grok`) |
 | 3. Implement | by tag, `ROUTINE` and `HARD` → `guest-implementer` (Neon) | by tag, no `HARD` |
 | 4. Task review | `sol` (task-review job; `opus-reviewer` on fallback or `OPUS_REVIEWS_TASK`) | `sonnet-reviewer` |
-| 4b. Test audit | `sol` lists → `codex` applies → `opus-reviewer` | `simplifier` (test-audit job) lists → `codex` applies → `opus-reviewer` |
-| 4b. Simplify | `simplifier` (simplify job) → `codex` → `opus-reviewer` | same as shipyard |
+| 4b. Test audit | `sol` (test-audit job, Neon) lists → `codex` applies → `opus-reviewer` | same as shipyard |
+| 4b. Simplify | `simplifier` (Neon) → `codex` → `opus-reviewer` | same as shipyard |
 | 5. Branch review | `fable` + `astra` (+ `mythos`, `grok`) | fresh `opus` (job 3) + `fable` (+ `mythos`, `grok`) |
 | 5. Final tests | orchestrator runs the full suite | same as shipyard |
 
 Routing in stage 3: `EASY` → `codex`, `ROUTINE` → `guest-implementer`
-(Neon, with its Terra fallback). `ANTIGRAVITY_ENABLED` and `OPUS_REVIEWS_TASK`
-change nothing here, since boatyard has no Sol. `SHIPYARD_SECURITY_SCAN` adds `mythos` to
+(Neon, with its Terra fallback). `OPUS_REVIEWS_TASK` changes nothing here,
+since boatyard's task reviewer is Sonnet. `SHIPYARD_SECURITY_SCAN` adds `mythos` to
 stage 5, and `SHIPYARD_GROK_REVIEW` adds `grok` to stages 2 and 5, exactly as
 in shipyard.
 
-Stage 4b runs exactly as in `SKILL.md`, with `simplifier` in place of `sol`
-for the test audit. `opus-reviewer` judges both polish commits here too; this
-is the one boatyard use of `opus-reviewer`. Sol is not used in boatyard.
+Stage 4b runs exactly as in `SKILL.md`, `sol` and `simplifier` included.
+`opus-reviewer` judges both polish commits here too; this is the one boatyard
+use of `opus-reviewer`. `sol`'s task-review job is not used in boatyard.
 Stage-5 repairs, including final-test-run repairs, are reviewed by
 `sonnet-reviewer` in boatyard. The first stage-5 brief and every delta brief
 for each enabled boatyard reviewer, including `mythos` and `grok` when enabled, carry
@@ -46,9 +46,9 @@ implementer.
 
 ## Red flags
 
-- Dispatching `astra` or `sol` in boatyard, or `opus-reviewer` for anything
-  but a stage-4b polish commit, or `sonnet-reviewer` in shipyard → the cast is
-  per mode; follow the table.
+- Dispatching `astra`, or `sol` for task review, in boatyard, or `opus-reviewer`
+  for anything but a stage-4b polish commit, or `sonnet-reviewer` in shipyard →
+  the cast is per mode; follow the table.
 - Reusing the planning `opus` run for its stage-2 or stage-5 review → that
   is the author reviewing itself.
 - Implementing a `HARD` task in boatyard → escalate to shipyard instead.

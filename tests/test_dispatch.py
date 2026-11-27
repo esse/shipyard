@@ -68,7 +68,6 @@ class DispatchTest(unittest.TestCase):
             executable.chmod(0o700)
         self.enter_context(patch.dict(os.environ, {
             "PATH": f"{self.bin}{os.pathsep}{os.environ['PATH']}",
-            "ANTIGRAVITY_ENABLED": "",
             "SHIPYARD_TEST_CALLS": str(self.log),
             "SHIPYARD_TEST_EVENTS": str(self.events),
         }))
@@ -90,8 +89,7 @@ class DispatchTest(unittest.TestCase):
     def test_read_only_routes_and_grok_gate(self):
         self.dispatch("astra", self.repo)
         self.dispatch("fable", self.repo)
-        with patch.dict(os.environ, ANTIGRAVITY_ENABLED="1"):
-            self.dispatch("sol", self.repo)
+        self.dispatch("sol", self.repo)
         with patch.dict(os.environ, SHIPYARD_TEST_GROK="1"):
             self.dispatch("grok", self.repo)
         with self.assertRaisesRegex(self.worker_error, "Missing or unenforced Grok read-only"):
@@ -108,14 +106,23 @@ class DispatchTest(unittest.TestCase):
         self.assertEqual(neon[2][-1], self.brief.read_text())
         self.assertIn("MCPTool", grok[2])
 
-    def test_sol_task_review_stays_on_sol_under_antigravity(self):
-        with patch.dict(os.environ, ANTIGRAVITY_ENABLED="1"):
-            self.dispatch("sol", self.worktree, "--task-review")
+    def test_sol_task_review_stays_on_sol(self):
+        self.dispatch("sol", self.worktree, "--task-review")
         (call,) = self.calls()
         self.assertEqual(call[0], "codex")
         self.assertIn("gpt-6.2-sol", call[2])
         self.assertIn("read-only", call[2])
         self.assertEqual(call[2][call[2].index("--cd") + 1], str(self.worktree))
+
+    def test_polish_listers_run_neon_then_fall_back_to_sol(self):
+        self.dispatch("simplifier", self.repo)
+        with patch.dict(os.environ, SHIPYARD_TEST_NEON="unavailable"):
+            self.dispatch("simplifier", self.repo)
+        neon, failed, sol = self.calls()
+        self.assertEqual([neon[0], failed[0], sol[0]], ["agy", "agy", "codex"])
+        self.assertIn("write_file(*)", json.loads(neon[2][neon[2].index("--settings") + 1])["permissions"]["deny"])
+        self.assertIn("gpt-6.2-sol", sol[2])
+        self.assertIn("read-only", sol[2])
 
     def test_implementation_and_fallback_use_task_worktree(self):
         with patch.dict(os.environ, SHIPYARD_TEST_NEON="unavailable"):

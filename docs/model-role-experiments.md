@@ -234,6 +234,16 @@ Astra keep stages 2 and 5. Grok returns only as an opt-in third reviewer at
 stages 2 and 5 (`SHIPYARD_GROK_REVIEW`), for users who want another lab's
 review anyway; it was not re-measured.
 
+### 2026-11-27 provider balance (not measured)
+
+With the orchestrator on Opus 5.5 and the largest plan on Gemini (Ultra),
+0.17 moves load off Anthropic without a new trial: the CLI wrappers run on
+Haiku instead of inheriting the session model, and the test audit (`sol`)
+and `simplifier` list on Neon xhigh, read-only, with gpt-6.2-sol as the
+fallback and Opus still judging each polish commit. Task review stays on
+Sol (0.16), not Neon, since Neon writes most of the code. Neon's lister
+quality is unmeasured; rerun trial 4 for Neon when quota allows.
+
 ## Current external facts to verify again at run time
 
 Google's [Antigravity model guide](https://antigravity.google/docs/models)

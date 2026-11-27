@@ -147,11 +147,10 @@ non-empty value.
    `Denied by permission policy: deny rule on mcp`. Do not judge from grok's
    own list of tools. Skip with a note if no server is configured.
 
-## Antigravity (Gemini 4 Neon: guest-implementer, and sol when enabled)
+## Antigravity (Gemini 4 Neon: guest-implementer and the polish listers)
 
-Always run checks 1–3 and 5: `guest-implementer` runs Neon for every
-`ROUTINE` and `HARD` task. Run check 4 only if `printenv ANTIGRAVITY_ENABLED`
-prints a non-empty value, and say so when you skip it.
+Always run every check: `guest-implementer` runs Neon for every `ROUTINE`
+and `HARD` task, and `sol` (test audit) and `simplifier` list on it.
 
 1. **On PATH, new enough** — `command -v agy` and `agy --version`. Fail
    below 1.5.12, the first release with Gemini 4 Neon.
@@ -160,9 +159,9 @@ prints a non-empty value, and say so when you skip it.
 3. **Model available** — `agy models`
    must list `gemini-4-neon-xhigh` and `gemini-4-neon-low`, the one the
    probes below use.
-4. **Sol's read-only gate really denies** — the security-critical one
-   under `ANTIGRAVITY_ENABLED`. Run from the project directory with Sol's
-   exact Antigravity flags:
+4. **The listers' read-only gate really denies** — the security-critical
+   one, shared by `sol`'s test audit and `simplifier`. Run from the project
+   directory with their exact flags:
 
    ```bash
    agy -p 'Create PROBE-DELETEME.txt containing x in the current directory with your file write tool, then run the shell command: touch PROBE2-DELETEME.txt. Report the exact error for each.' \
@@ -172,8 +171,8 @@ prints a non-empty value, and say so when you skip it.
    ```
 
    **Pass means `ls` finds neither file** and agy reported a deny rule. If
-   either appears, delete it and report a failure loudly: the test audit has no read-only
-   gate.
+   either appears, delete it and report a failure loudly: the polish
+   listers have no read-only gate.
 5. **Implementer round-trip and confinement** — the implementer's exact
    flags, minus the toplevel guard (the probe directory is not a git repo). The outside target sits in `$HOME`, because the temp dirs are
    writable by design:
@@ -203,15 +202,13 @@ restatement of the expectation. Then:
 - **Codex fails** — stages 1, 2, 3, 4b and 5 are blocked; the pipeline cannot run.
   Astra writes the plan, so this fails at stage 1, before anything else. Do not
   offer to substitute another model for Astra, Sol or Luna.
-- **Only Sol's check fails** — the shipyard test-audit pass (stage 4b) is blocked, and stage-4 task reviews fall back to Opus; boatyard and every other stage still run.
+- **Only Sol's check fails** — stage-4 task reviews fall back to Opus, and the polish listers lose their fallback: if Neon also fails, stage 4b is blocked. Every other stage still runs.
 - **Antigravity fails (checks 1–3)** — `ROUTINE` tasks still run through
   Terra if its check passes, and `HARD` tasks through `sonnet-implementer`.
-  If Terra fails too, `ROUTINE` tasks are blocked. Under
-  `ANTIGRAVITY_ENABLED`, the test audit runs on gpt-6.2-sol if Sol's check
-  passes; name unsetting the variable as the user's choice and do not unset
-  it for them.
+  If Terra fails too, `ROUTINE` tasks are blocked. The polish
+  listers run on gpt-6.2-sol if Sol's check passes.
 - **A gate check (4 or 5) fails** — report it loudly. Check 4 failing is a
-  hard stop for the Antigravity test audit. Check 5 failing means Neon
+  hard stop for the Neon polish listers (their Sol fallback still works). Check 5 failing means Neon
   implementer runs are not confined to their worktree; say so plainly, and
   that the orchestrator's main-checkout check after each Neon task is then
   the only gate.

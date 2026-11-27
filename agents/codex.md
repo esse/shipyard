@@ -1,6 +1,7 @@
 ---
 name: codex
 description: Delegate a task to the OpenAI Codex CLI running gpt-6-luna at max reasoning effort. Use when the user explicitly asks for codex, a GPT second opinion, or cross-model review of a plan, diff, or piece of code.
+model: haiku
 tools: Bash, Read, Write, Glob, Grep
 ---
 

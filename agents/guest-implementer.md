@@ -1,6 +1,7 @@
 ---
 name: guest-implementer
 description: Implement one ROUTINE or HARD task via Gemini 4 Neon (gemini-4-neon-xhigh) through the Antigravity CLI, write-enabled. If Neon fails before producing work, ROUTINE falls back to Terra via Codex; HARD reports back so the orchestrator re-dispatches it to sonnet-implementer. EASY tasks go to the codex agent.
+model: haiku
 tools: Bash, Read, Write, Glob, Grep
 ---
 

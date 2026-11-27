@@ -96,8 +96,7 @@ Set optional switches in the environment that starts the lead. For example:
 SHIPYARD_GROK_REVIEW=1 codex --model gpt-6.1-terra
 ```
 
-`ANTIGRAVITY_ENABLED=1` selects Neon for Shipyard's test audit, with Sol as
-fallback. `OPUS_REVIEWS_TASK=1` makes Opus, not Sol, review each Shipyard task. `SHIPYARD_SECURITY_SCAN=1` adds Mythos to branch review.
+`OPUS_REVIEWS_TASK=1` makes Opus, not Sol, review each Shipyard task. `SHIPYARD_SECURITY_SCAN=1` adds Mythos to branch review.
 
 ## Requirements
 
@@ -110,28 +109,28 @@ fallback. `OPUS_REVIEWS_TASK=1` makes Opus, not Sol, review each Shipyard task. 
 
 In Claude Code, run `/shipyard:doctor` before relying on the plugin. It exercises the wrapper commands and probes their CLI sandbox rules. For other hosts, use the [portable dispatch checks](skills/shipping-plans-with-agents/dispatch.md#collect-the-result). To test routing and fallback locally without provider credentials, run `python3 -m unittest discover -s tests`.
 
-If `~/.claude/agents/` already holds a file named after any agent in this plugin, delete it after installing. The plugin ships `astra`, `sol`, `fable`, `opus`, `codex`, `opus-reviewer`, `simplifier`, `sonnet-reviewer`, `sonnet-implementer`, `guest-implementer`, `mythos` and `grok`, and duplicates get confusing. Shipyard 0.4 and earlier shipped a `sol-reviewer` agent. `astra` replaced it, and it has nothing to do with today's `sol`, so delete any stale copy. Shipyard 0.13 and earlier shipped `grok-implementer` and `grok-reviewer`, now `guest-implementer` and `guest-reviewer` because those seats run Grok or Neon, and an opt-in `bonsai-implementer`, now removed. Delete stale copies of all three, and drop `CLAUDE_LOCAL_AVAILABLE` from your settings. Shipyard 0.15 dropped Grok as a default seat: delete any stale `guest-reviewer`, and drop `SHIPYARD_NO_GROK` from your settings. Grok now reviews only when you opt in with `SHIPYARD_GROK_REVIEW`.
+If `~/.claude/agents/` already holds a file named after any agent in this plugin, delete it after installing. The plugin ships `astra`, `sol`, `fable`, `opus`, `codex`, `opus-reviewer`, `simplifier`, `sonnet-reviewer`, `sonnet-implementer`, `guest-implementer`, `mythos` and `grok`, and duplicates get confusing. Shipyard 0.4 and earlier shipped a `sol-reviewer` agent. `astra` replaced it, and it has nothing to do with today's `sol`, so delete any stale copy. Shipyard 0.13 and earlier shipped `grok-implementer` and `grok-reviewer`, now `guest-implementer` and `guest-reviewer` because those seats run Grok or Neon, and an opt-in `bonsai-implementer`, now removed. Delete stale copies of all three, and drop `CLAUDE_LOCAL_AVAILABLE` from your settings. Shipyard 0.17 made `simplifier` a Neon wrapper, moved the test audit to Neon by default and removed `ANTIGRAVITY_ENABLED`; drop it from your settings. Shipyard 0.15 dropped Grok as a default seat: delete any stale `guest-reviewer`, and drop `SHIPYARD_NO_GROK` from your settings. Grok now reviews only when you opt in with `SHIPYARD_GROK_REVIEW`.
 
 ## The cast
 
 | Name | Agent | Model | Access | Used in |
 | --- | --- | --- | --- | --- |
 | Astra | `astra` | gpt-6.2-astra, medium reasoning | read-only | shipyard: plan, plan and branch review |
-| Sol | `sol` | gpt-6.2-sol, high reasoning | read-only | shipyard: task review, test audit |
+| Sol | `sol` | gpt-6.2-sol, high reasoning | read-only | shipyard: task review; both: test-audit fallback |
 | Fable | `fable` | Claude Fable | read-only | both: plan and branch review |
 | Opus | `opus` | Claude Opus | read-only | boatyard: plan, plan and branch review |
 | Opus | `opus-reviewer` | Claude Opus | read-only | shipyard: task review fallback, or with `OPUS_REVIEWS_TASK`; both: polish review |
-| Simplifier | `simplifier` | Claude Opus | read-only | both: simplify; boatyard: test audit |
+| Simplifier | `simplifier` | gemini-4-neon-xhigh via `agy`; gpt-6.2-sol fallback | read-only | both: simplify |
 | Sonnet | `sonnet-reviewer` | Claude Sonnet | read-only | boatyard: task review |
 | Luna | `codex` | gpt-6-luna, max reasoning | write | both: `EASY` tasks, polish fixes, fallbacks |
 | Neon | `guest-implementer` | gemini-4-neon-xhigh via `agy` | write | both: `ROUTINE` tasks; shipyard: `HARD` tasks |
-| Neon | `sol` | gemini-4-neon-xhigh via `agy`, opt-in | read-only | shipyard: test audit, with `ANTIGRAVITY_ENABLED` |
+| Neon | `sol` | gemini-4-neon-xhigh via `agy` | read-only | both: test audit |
 | Terra | Neon fallback | gpt-6.1-terra, high reasoning | write | `ROUTINE` tasks when Neon fails before producing work |
 | Sonnet | `sonnet-implementer` | Claude Sonnet 5.5 | write | shipyard: `HARD` tasks when Neon fails before producing work |
 | Mythos | `mythos` | Claude Mythos 5.2, opt-in | read-only | both: security scan in branch review |
 | Grok | `grok` | grok-4.7, xhigh reasoning, opt-in | read-only | both: plan and branch review, with `SHIPYARD_GROK_REVIEW` |
 
-Each agent definition pins its model. The Claude agents pin it in frontmatter, the CLI wrappers in a command-line argument. **Your session model doesn't matter.** Start on Terra, Neon, or Opus and Astra still writes the Shipyard plan, because every stage is a dispatch to a pinned agent. Your session orchestrates. It dispatches, merges, resolves conflicts and talks to you.
+Each agent definition pins its model. The Claude agents pin it in frontmatter, the CLI wrappers in a command-line argument. The wrappers themselves (`astra`, `sol`, `simplifier`, `codex`, `guest-implementer`, `grok`) run on Haiku: they only write a prompt file, launch the CLI and relay its answer, so they don't spend your session model's quota. **Your session model doesn't matter.** Start on Terra, Neon, or Opus and Astra still writes the Shipyard plan, because every stage is a dispatch to a pinned agent. Your session orchestrates. It dispatches, merges, resolves conflicts and talks to you.
 
 For the plugin, model IDs are in `agents/*.md`. Portable CLI model IDs are in `dispatch.py`, with Claude models read from the agent definitions. If your build doesn't recognise the `fable` or `sonnet` alias, use `claude-fable-5` or `claude-sonnet-5-5`. On the Codex side, `agents/astra.md` pins `gpt-6.2-astra` and `agents/sol.md` pins `gpt-6.2-sol`.
 
@@ -167,7 +166,7 @@ The routing below follows a quick pass of the
 
 **4. Task review.** Sol reviews each finished task against the plan step that spawned it. If Sol can't run, Opus takes that review and the session warns you; set `OPUS_REVIEWS_TASK=1` to always use Opus. Stage-5 repairs get the same reviewer. `FIX` sends it back to the same implementer in the same worktree. `APPROVE` lets it merge. A task is done when it is approved and merged, not before.
 
-**4b. Polish.** Two passes run in order, test audit and then simplify. Sol lists fixes for the tests the branch added or changed, against the [test-audit rubric](#test-audit). Simplifier then lists simplifications for all changed code. The listers never edit. Luna applies each non-empty list in a fresh worktree as one commit and may decline items that would change behaviour, as long as it says why. Opus judges that commit against the list. A pass that still fails after one fix round gets dropped with a one-line note. Task commits never get dropped. The session skips the test audit when no tests changed and says so.
+**4b. Polish.** Two passes run in order, test audit and then simplify. Neon, through `sol`, lists fixes for the tests the branch added or changed, against the [test-audit rubric](#test-audit). Neon, through `simplifier`, then lists simplifications for all changed code; both fall back to Sol. The listers never edit. Luna applies each non-empty list in a fresh worktree as one commit and may decline items that would change behaviour, as long as it says why. Opus judges that commit against the list. A pass that still fails after one fix round gets dropped with a one-line note. Task commits never get dropped. The session skips the test audit when no tests changed and says so.
 
 **5. Branch review.** Fable and Astra attack the integrated diff in parallel, joined by Mythos when the security scan is on and by Grok when the Grok review is on. They see both polish lists with their outcomes. Any accepted blocker goes through a repair, a task review, and a delta re-review by every reviewer, not just the one who raised it. Once nobody has blockers, the session runs the project's full test suite. A failure goes through the same repair loop. The PR opens only when the reviewers are clear and the suite is green on the same diff. If the project has no suite, the session says so.
 
@@ -193,28 +192,24 @@ Boatyard runs the same stages and gates with a smaller crew. Every shipyard rule
 | 2. Plan review | Fable, fresh Astra, plus Grok if on | Fable, fresh Opus, plus Grok if on |
 | 3. Implement | Luna or Neon by tag | Luna or Neon by tag |
 | 4. Task review | Sol, Opus fallback | Sonnet |
-| 4b. Polish | Sol audits tests, Simplifier simplifies, Opus judges | Simplifier does both, Opus judges |
+| 4b. Polish | Neon audits tests and lists simplifications, Opus judges | same |
 | 5. Branch review | Fable, Astra, plus Mythos and Grok if on | fresh Opus, Fable, plus Mythos and Grok if on |
 | 5. Final tests | full suite, run by the session | same |
 
 - **The Opus reviews are fresh dispatches.** They get the spec and the plan or diff, never the planning run, so the reviewer doesn't inherit the author's blind spots.
 - **A `HARD` task means triage got it wrong.** If the plan, a plan reviewer or a branch fix calls a task `HARD`, boatyard stops, names the task and the reason, and restarts in shipyard from stage 1. Merged work stays on the branch.
-- **The switches work the same.** `SHIPYARD_SECURITY_SCAN` adds Mythos to the branch review, and `SHIPYARD_GROK_REVIEW` adds Grok to plan and branch review. `ANTIGRAVITY_ENABLED` and `OPUS_REVIEWS_TASK` do nothing here, since boatyard has no Sol.
+- **The switches work the same.** `SHIPYARD_SECURITY_SCAN` adds Mythos to the branch review, and `SHIPYARD_GROK_REVIEW` adds Grok to plan and branch review. `OPUS_REVIEWS_TASK` does nothing here, since boatyard's task reviewer is Sonnet.
 - **Boatyard gives up cross-lab review.** Anthropic models do all of its planning and reviewing. That buys speed and cost, which is why large or hard work still goes to shipyard.
 
 The boatyard rules live in `skills/shipping-plans-with-agents/boatyard.md`.
 
 ## Gemini 4 Neon via Antigravity
 
-`guest-implementer` always runs Gemini 4 Neon (`gemini-4-neon-xhigh`, through the Antigravity CLI) for `ROUTINE` and `HARD` tasks. Set `ANTIGRAVITY_ENABLED=1` and Neon also takes Sol's test audit. Boatyard has no Sol, so the variable changes nothing there.
-
-```json
-{ "env": { "ANTIGRAVITY_ENABLED": "1" } }
-```
+`guest-implementer` always runs Gemini 4 Neon (`gemini-4-neon-xhigh`, through the Antigravity CLI) for `ROUTINE` and `HARD` tasks. Neon also lists the polish fixes, read-only: `sol`'s test audit and `simplifier`'s simplifications, in shipyard and boatyard. That puts the token-heavy implementation and listing on the Gemini plan, leaves Anthropic with orchestration and the gates (Fable, Opus judging polish, Opus as task-review fallback), and keeps Codex for planning, review and `EASY` tasks.
 
 Why these seats: on the [Artificial Analysis coding-agent index](https://artificialanalysis.ai/agents/coding-agents) (November 2026), Antigravity with Neon xhigh scores 58.6, level with Claude Fable 5.2 xhigh (58.5) and Opus 5.5 max (58.2) at the top. In the November 2026 quick pass of the [model role experiments](docs/model-role-experiments.md), Neon xhigh matched Sonnet's acceptance rate on `HARD` tasks with higher design scores, though on only two cases. As a third reviewer, Gemini caught nothing Fable and Astra missed and raised more false blockers, so the review panel has no Gemini seat. The Gemini quota is weekly and shared across models, so expect the fallbacks to run when it is spent.
 
-It needs `agy` 1.5.12 or newer, signed in either way agy supports: a Gemini subscription login, or `GEMINI_API_KEY` in the environment the lead session starts from. The wrappers don't pick a backend, so agy uses whichever sign-in you set up. For `ANTIGRAVITY_ENABLED`, any non-empty value turns it on. If Neon is missing, out of quota or fails before producing work, `ROUTINE` tasks fall back to Terra (`gpt-6.1-terra`, high reasoning, through Codex), `HARD` tasks go to `sonnet-implementer`, and Sol falls back to `gpt-6.2-sol`. The wrapper stops instead of falling back if a failed Neon run left the worktree dirty.
+It needs `agy` 1.5.12 or newer, signed in either way agy supports: a Gemini subscription login, or `GEMINI_API_KEY` in the environment the lead session starts from. The wrappers don't pick a backend, so agy uses whichever sign-in you set up. If Neon is missing, out of quota or fails before producing work, `ROUTINE` tasks fall back to Terra (`gpt-6.1-terra`, high reasoning, through Codex), `HARD` tasks go to `sonnet-implementer`, and the polish listers fall back to `gpt-6.2-sol`. The wrapper stops instead of falling back if a failed Neon run left the worktree dirty.
 
 ## Security scan
 
@@ -243,7 +238,7 @@ Every flag in the CLI commands does a job. Don't trim them.
 - **Luna edits only the task worktree.** Its `--sandbox workspace-write` sandbox blocks writes to the linked worktree's git index. The native `codex` wrapper or portable lead commits the edits.
 - **Grok reviews under two gates.** `--sandbox read-only` is kernel-enforced but still lets grok write under `~/.grok` and the temp dirs, so `--deny Edit --deny Write --deny Bash --deny MCPTool` closes the rest; `--deny MCPTool` is the one that stops a write-capable MCP tool. The wrapper treats a sandbox profile that failed to apply as a hard error.
 - **Claude workers use different access rules by harness.** Native Claude Code subagents follow their role instructions. Portable reviewers have only read tools. Portable Sonnet can edit through Claude's restricted file tools, and the lead runs its tests and commits.
-- **The Antigravity roles use permission rules plus the terminal sandbox.** Under `ANTIGRAVITY_ENABLED`, `sol` runs with deny rules on `write_file(*)`, `command(*)`, `mcp(*)` and `execute_url(*)`. Those hold under `--dangerously-skip-permissions`, which is there only so headless runs don't stall. `guest-implementer` runs under `--sandbox`, which keeps shell commands in the worktree and temp dirs, with an allow rule for `write_file(<worktree>)` and a deny rule for `unsandboxed(*)`, and headless mode refuses anything not allowed, including Neon's requests to leave the sandbox. That is the design; in practice `/shipyard:doctor`'s implementer probe has seen Neon's shell commands write outside the worktree, so the session checks the main checkout after every Neon task, as for Sonnet. Committing from a linked worktree writes the main checkout's `.git`, so the native wrapper or portable lead commits for Neon. Never give the implementer `--dangerously-skip-permissions`, because it approves file writes outside the workspace. agy has no `--cwd`, so the native wrapper checks its `cd` with `git rev-parse --show-toplevel`. The portable dispatcher starts agy directly in the validated target checkout. agy logs no sandbox event, so `/shipyard:doctor` probes both gates. A refused action ends a headless run with exit 0 and `jetski: no output produced`, which the wrappers treat as a failure.
+- **The Antigravity roles use permission rules plus the terminal sandbox.** The Neon polish listers run with deny rules on `write_file(*)`, `command(*)`, `mcp(*)` and `execute_url(*)`. Those hold under `--dangerously-skip-permissions`, which is there only so headless runs don't stall. `guest-implementer` runs under `--sandbox`, which keeps shell commands in the worktree and temp dirs, with an allow rule for `write_file(<worktree>)` and a deny rule for `unsandboxed(*)`, and headless mode refuses anything not allowed, including Neon's requests to leave the sandbox. That is the design; in practice `/shipyard:doctor`'s implementer probe has seen Neon's shell commands write outside the worktree, so the session checks the main checkout after every Neon task, as for Sonnet. Committing from a linked worktree writes the main checkout's `.git`, so the native wrapper or portable lead commits for Neon. Never give the implementer `--dangerously-skip-permissions`, because it approves file writes outside the workspace. agy has no `--cwd`, so the native wrapper checks its `cd` with `git rev-parse --show-toplevel`. The portable dispatcher starts agy directly in the validated target checkout. agy logs no sandbox event, so `/shipyard:doctor` probes both gates. A refused action ends a headless run with exit 0 and `jetski: no output produced`, which the wrappers treat as a failure.
 
 ## Why cross-model
 

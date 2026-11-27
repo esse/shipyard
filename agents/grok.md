@@ -1,6 +1,7 @@
 ---
 name: grok
 description: Opt-in adversarial review of a plan (stage 2) or of the integrated branch diff (stage 5), alongside the other reviewers, via the Grok CLI (grok-4.7, xhigh reasoning, read-only). Enabled by SHIPYARD_GROK_REVIEW; skipped with a warning when Grok is unavailable.
+model: haiku
 tools: Bash, Read, Write, Glob, Grep
 ---
 

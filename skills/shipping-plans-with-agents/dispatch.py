@@ -3,7 +3,6 @@
 
 import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -11,7 +10,7 @@ from pathlib import Path
 
 AGENTS = Path(__file__).resolve().parents[2] / "agents"
 CLAUDE_ROLES = (
-    "fable", "opus", "opus-reviewer", "simplifier",
+    "fable", "opus", "opus-reviewer",
     "sonnet-reviewer", "sonnet-implementer", "mythos",
 )
 CODEX_ROLES = {
@@ -155,8 +154,8 @@ def grok(cwd, brief_path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("role", choices=[*CLAUDE_ROLES, "astra", "sol", "codex",
-                                        "guest-implementer", "grok"])
+    parser.add_argument("role", choices=[*CLAUDE_ROLES, "astra", "sol", "simplifier",
+                                        "codex", "guest-implementer", "grok"])
     parser.add_argument("checkout", type=Path)
     parser.add_argument("brief", type=Path)
     parser.add_argument("--tier", choices=["ROUTINE", "HARD"],
@@ -204,12 +203,12 @@ def main():
                 raise WorkerError(f"NEON UNAVAILABLE: {error}") from error
             print(f"Neon unavailable, trying Terra: {error}", file=sys.stderr)
             header, output = codex("terra", cwd, brief, write=True)
-    elif role == "sol" and os.environ.get("ANTIGRAVITY_ENABLED") and not args.task_review:
+    elif role == "simplifier" or (role == "sol" and not args.task_review):
         try:
             header, output = neon(cwd, brief, write=False)
         except WorkerError as error:
             print(f"Neon unavailable, trying Sol: {error}", file=sys.stderr)
-            header, output = codex(role, cwd, brief, write=False)
+            header, output = codex("sol", cwd, brief, write=False)
     else:
         header, output = codex(role, cwd, brief, write)
 

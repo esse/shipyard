@@ -1,6 +1,7 @@
 ---
 name: astra
 description: Writes the implementation plan (stage 1), and adversarially reviews the plan (stage 2) or the integrated branch diff (stage 5), via the Codex CLI (gpt-6.2-astra, medium reasoning, read-only).
+model: haiku
 tools: Bash, Read, Write, Glob, Grep
 ---
 
