@@ -149,15 +149,16 @@ non-empty value.
 
 ## Antigravity (Gemini 4 Neon: guest-implementer and the polish listers)
 
-Always run every check: `guest-implementer` runs Neon for every `ROUTINE`
-and `HARD` task, and `sol` (test audit) and `simplifier` list on it.
+Always run every check: `guest-implementer` runs Hydrogen for every
+`ROUTINE` task and Neon for every `HARD` task, and `sol` (test audit) and `simplifier` list on it.
 
 1. **On PATH, new enough** — `command -v agy` and `agy --version`. Fail
    below 1.5.12, the first release with Gemini 4 Neon.
 2. **Signed in** — `agy models` exits 0. Any sign-in works: a Gemini
    subscription login or `GEMINI_API_KEY`. Never print a key.
 3. **Model available** — `agy models`
-   must list `gemini-4-neon-xhigh` and `gemini-4-neon-low`, the one the
+   must list `gemini-4-neon-xhigh`, `gemini-4-hydrogen-high` and
+   `gemini-4-neon-low`, the one the
    probes below use.
 4. **The listers' read-only gate really denies** — the security-critical
    one, shared by `sol`'s test audit and `simplifier`. Run from the project

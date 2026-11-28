@@ -10,7 +10,7 @@ switches — except the cast below.
 |---|---|---|
 | 1. Plan | `astra` | `opus` (job 1) |
 | 2. Plan review | `fable` + fresh `astra` (+ `grok`) | `fable` + fresh `opus` (job 2) (+ `grok`) |
-| 3. Implement | by tag, `ROUTINE` and `HARD` → `guest-implementer` (Neon) | by tag, no `HARD` |
+| 3. Implement | by tag, `ROUTINE` → `guest-implementer` (Hydrogen), `HARD` → `guest-implementer` (Neon) | by tag, no `HARD` |
 | 4. Task review | `sol` (task-review job; `opus-reviewer` on fallback or `OPUS_REVIEWS_TASK`) | `sonnet-reviewer` |
 | 4b. Test audit | `sol` (test-audit job, Neon) lists → `codex` applies → `opus-reviewer` | same as shipyard |
 | 4b. Simplify | `simplifier` (Neon) → `codex` → `opus-reviewer` | same as shipyard |
@@ -18,7 +18,7 @@ switches — except the cast below.
 | 5. Final tests | orchestrator runs the full suite | same as shipyard |
 
 Routing in stage 3: `EASY` → `codex`, `ROUTINE` → `guest-implementer`
-(Neon, with its Terra fallback). `OPUS_REVIEWS_TASK` changes nothing here,
+(Hydrogen, with its Terra fallback). `OPUS_REVIEWS_TASK` changes nothing here,
 since boatyard's task reviewer is Sonnet. `SHIPYARD_SECURITY_SCAN` adds `mythos` to
 stage 5, and `SHIPYARD_GROK_REVIEW` adds `grok` to stages 2 and 5, exactly as
 in shipyard.

@@ -36,7 +36,8 @@ When unsure, it is shipyard. An explicit "use shipyard" / "use boatyard" from th
 | Luna | `codex` | gpt-6-luna, max | write |
 | Opus | `opus-reviewer` | Claude Opus | read-only |
 | Simplifier | `simplifier` | gemini-4-neon-xhigh via Antigravity, gpt-6.2-sol fallback | read-only |
-| Neon | `guest-implementer` | gemini-4-neon-xhigh, via Antigravity | write |
+| Hydrogen | `guest-implementer`, `ROUTINE` | gemini-4-hydrogen-high, via Antigravity | write |
+| Neon | `guest-implementer`, `HARD` | gemini-4-neon-xhigh, via Antigravity | write |
 | Terra | `guest-implementer` fallback, ROUTINE only | gpt-6.1-terra, high | write |
 | Sonnet | `sonnet-implementer`, HARD fallback | Claude Sonnet 5.5 | write |
 | Mythos | `mythos` | Claude Mythos 5.2 (opt-in) | read-only |
@@ -44,7 +45,7 @@ When unsure, it is shipyard. An explicit "use shipyard" / "use boatyard" from th
 
 Every review in this pipeline is **adversarial** — Fable, Astra, Sol, Opus, Mythos and Grok all hunt for reasons to reject. The gate is blockers, not an empty findings list. `EXECUTE AS-IS` / `MERGE AS-IS` / `APPROVE` mean no blockers, not praise. Astra wrote the plan and reviews it again in stage 2, and the branch in stage 5; the fresh dispatch is what keeps that honest — a new subagent, a new `codex exec`, none of the planning context.
 
-**Neon implements ROUTINE and HARD, with a fallback per tier.** `guest-implementer` runs `gemini-4-neon-xhigh` through the Antigravity CLI (`agy`). When Neon cannot run before producing work (agy missing, signed out, or out of quota — the Gemini quota is weekly), a ROUTINE task falls back to Terra (`gpt-6.1-terra`, high, via Codex CLI) inside the wrapper, and a HARD task comes back as `NEON UNAVAILABLE: <reason>`; re-dispatch that task to `sonnet-implementer` in the same worktree. Tell the user once when a fallback happened. Only Terra also failing on a ROUTINE task is a hard stop, and `guest-implementer` also stops if the worktree is dirty after a failed Neon attempt.
+**Gemini implements ROUTINE and HARD, with a fallback per tier.** `guest-implementer` runs `gemini-4-hydrogen-high` (Hydrogen) for `ROUTINE` and `gemini-4-neon-xhigh` (Neon) for `HARD`, through the Antigravity CLI (`agy`); the tag in the brief picks the model. When Neon cannot run before producing work (agy missing, signed out, or out of quota — the Gemini quota is weekly), a ROUTINE task falls back to Terra (`gpt-6.1-terra`, high, via Codex CLI) inside the wrapper, and a HARD task comes back as `NEON UNAVAILABLE: <reason>`; re-dispatch that task to `sonnet-implementer` in the same worktree. Tell the user once when a fallback happened. Only Terra also failing on a ROUTINE task is a hard stop, and `guest-implementer` also stops if the worktree is dirty after a failed Neon attempt.
 
 **Sol reviews tasks, with Opus as the fallback.** Before stage 2, also run `printenv OPUS_REVIEWS_TASK`. Any non-empty value (use `1`) makes every stage-4 task review an `opus-reviewer` dispatch; say so once, in stage 2. Otherwise the task reviewer is `sol` (task-review job, always gpt-6.2-sol, never Neon). If `sol` returns `SOL UNAVAILABLE: <reason>`, re-dispatch that same review to `opus-reviewer`, warn the user in one line with the reason, and try `sol` again on the next review. Each re-review after a FIX goes to whichever reviewer gave that FIX, unless it is now unavailable. The stage-5 repair review uses the same rule. Polish-pass commits in stage 4b are always judged by `opus-reviewer`.
 
@@ -88,7 +89,7 @@ Cap at two rounds (one full, one delta). After round 2:
 
 **Implementation starts when every enabled reviewer has an empty blocker list on the current plan, or when round 2 closed with only nits and risks remaining**. Nothing else opens the gate. Where reviewers contradict each other on a non-blocking finding, say which you took and why.
 
-**3. Implement — Luna and Neon.** **Create each worktree yourself, before dispatching**, and pass its absolute path in the brief: `git worktree add <root>/<repo>-<task-slug> -b <branch>`. Then dispatch one agent per task, all in a single message so they run in parallel.
+**3. Implement — Luna, Hydrogen and Neon.** **Create each worktree yourself, before dispatching**, and pass its absolute path in the brief: `git worktree add <root>/<repo>-<task-slug> -b <branch>`. Then dispatch one agent per task, all in a single message so they run in parallel.
 
 Do **not** use `isolation: "worktree"`. It picks its own path, and you need the path in advance for three things: a project's own convention for where worktrees live, seeding the tree so the agent can build (dependencies, build artifacts, submodule sources — a bare worktree usually cannot compile or run tests), and `guest-implementer`'s write allow rule, whose root *is* that path. Verify the tree compiles before you dispatch; an agent that cannot run the suite will report a gate it never ran. Route by the plan's tag: `EASY` → `codex`, `ROUTINE` and `HARD` → `guest-implementer`, with the tag stated in the brief; a HARD task that comes back `NEON UNAVAILABLE` goes to `sonnet-implementer` in the same worktree. Include residual stage-2 nits and risks in each brief as non-blocking notes. Each wrapper commits in its own worktree; the inner CLI does not. `sonnet-implementer` has no inner CLI and commits its own work.
 

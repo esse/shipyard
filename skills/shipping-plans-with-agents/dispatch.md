@@ -51,7 +51,7 @@ expected output format before treating a review as complete.
   `opus-reviewer` with a one-line warning. A missing read-only gate or malformed review stops
   the gate. For Mythos, only an explicit model-unavailable error follows
   the opt-in warning path.
-- The dispatcher tries Terra for ROUTINE work if Neon fails while its
+- ROUTINE work runs on Hydrogen and HARD on Neon. The dispatcher tries Terra for ROUTINE work if Hydrogen fails while its
   worktree is still clean and at the original HEAD. For HARD work in the
   same situation, `NEON UNAVAILABLE:` tells the lead to launch
   `sonnet-implementer` in that worktree. A failed run with changes is left

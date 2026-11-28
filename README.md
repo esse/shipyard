@@ -101,7 +101,7 @@ SHIPYARD_GROK_REVIEW=1 codex --model gpt-6.1-terra
 ## Requirements
 
 - **Codex CLI 0.147 or newer**, on `PATH` and logged in with `codex login`. Astra, Sol and Luna shell out to `codex exec`, and `guest-implementer` uses it for its Terra fallback. Astra writes the plan, so nothing runs without Codex. Luna runs with `--sandbox workspace-write -c approval_policy="never"`. Don't pass `--full-auto`, which 0.147 removed, or `--approve-for-me`, which conflicts with `--sandbox` since 0.153.
-- **Antigravity CLI 1.5.12 or newer** (`agy`), signed in with a Gemini subscription or with `GEMINI_API_KEY` exported in the environment the lead session starts from. `guest-implementer` runs Gemini 4 Neon through it for `ROUTINE` and `HARD` tasks, see [Gemini 4 Neon via Antigravity](#gemini-4-neon-via-antigravity). Without it, `ROUTINE` tasks fall back to Terra and `HARD` tasks to Sonnet.
+- **Antigravity CLI 1.5.12 or newer** (`agy`), signed in with a Gemini subscription or with `GEMINI_API_KEY` exported in the environment the lead session starts from. `guest-implementer` runs Gemini 4 Hydrogen through it for `ROUTINE` tasks and Gemini 4 Neon for `HARD` tasks, see [Gemini 4 via Antigravity](#gemini-4-via-antigravity). Without it, `ROUTINE` tasks fall back to Terra and `HARD` tasks to Sonnet.
 - **Grok CLI**, only if you turn on the [Grok review](#grok-review): on `PATH`, signed in, with `grok-4.7` listed by `grok models`.
 - **Claude Code CLI**, on `PATH` and signed in, for the Claude seats in portable sessions.
 - **Python 3.9+**, for the portable dispatcher.
@@ -123,9 +123,10 @@ If `~/.claude/agents/` already holds a file named after any agent in this plugin
 | Simplifier | `simplifier` | gemini-4-neon-xhigh via `agy`; gpt-6.2-sol fallback | read-only | both: simplify |
 | Sonnet | `sonnet-reviewer` | Claude Sonnet | read-only | boatyard: task review |
 | Luna | `codex` | gpt-6-luna, max reasoning | write | both: `EASY` tasks, polish fixes, fallbacks |
-| Neon | `guest-implementer` | gemini-4-neon-xhigh via `agy` | write | both: `ROUTINE` tasks; shipyard: `HARD` tasks |
+| Hydrogen | `guest-implementer` | gemini-4-hydrogen-high via `agy` | write | both: `ROUTINE` tasks |
+| Neon | `guest-implementer` | gemini-4-neon-xhigh via `agy` | write | shipyard: `HARD` tasks |
 | Neon | `sol` | gemini-4-neon-xhigh via `agy` | read-only | both: test audit |
-| Terra | Neon fallback | gpt-6.1-terra, high reasoning | write | `ROUTINE` tasks when Neon fails before producing work |
+| Terra | Hydrogen fallback | gpt-6.1-terra, high reasoning | write | `ROUTINE` tasks when Hydrogen fails before producing work |
 | Sonnet | `sonnet-implementer` | Claude Sonnet 5.5 | write | shipyard: `HARD` tasks when Neon fails before producing work |
 | Mythos | `mythos` | Claude Mythos 5.2, opt-in | read-only | both: security scan in branch review |
 | Grok | `grok` | grok-4.7, xhigh reasoning, opt-in | read-only | both: plan and branch review, with `SHIPYARD_GROK_REVIEW` |
@@ -153,7 +154,7 @@ The routing below follows a quick pass of the
 | Tag | Means | Implementer |
 | --- | --- | --- |
 | `EASY` | Fully prescribed, and copies a pattern already in the codebase | Luna |
-| `ROUTINE` | No open design decision, but the implementer works out how | Neon, Terra as fallback |
+| `ROUTINE` | No open design decision, but the implementer works out how | Hydrogen, Terra as fallback |
 | `HARD` | Leaves an API, data format, security, compatibility, concurrency or migration decision open | Neon, Sonnet as fallback; shipyard only |
 
 ## The pipeline
@@ -190,7 +191,7 @@ Boatyard runs the same stages and gates with a smaller crew. Every shipyard rule
 | --- | --- | --- |
 | 1. Plan | Astra | Opus |
 | 2. Plan review | Fable, fresh Astra, plus Grok if on | Fable, fresh Opus, plus Grok if on |
-| 3. Implement | Luna or Neon by tag | Luna or Neon by tag |
+| 3. Implement | Luna, Hydrogen or Neon by tag | Luna or Hydrogen by tag |
 | 4. Task review | Sol, Opus fallback | Sonnet |
 | 4b. Polish | Neon audits tests and lists simplifications, Opus judges | same |
 | 5. Branch review | Fable, Astra, plus Mythos and Grok if on | fresh Opus, Fable, plus Mythos and Grok if on |
@@ -203,13 +204,13 @@ Boatyard runs the same stages and gates with a smaller crew. Every shipyard rule
 
 The boatyard rules live in `skills/shipping-plans-with-agents/boatyard.md`.
 
-## Gemini 4 Neon via Antigravity
+## Gemini 4 via Antigravity
 
-`guest-implementer` always runs Gemini 4 Neon (`gemini-4-neon-xhigh`, through the Antigravity CLI) for `ROUTINE` and `HARD` tasks. Neon also lists the polish fixes, read-only: `sol`'s test audit and `simplifier`'s simplifications, in shipyard and boatyard. That puts the token-heavy implementation and listing on the Gemini plan, leaves Anthropic with orchestration and the gates (Fable, Opus judging polish, Opus as task-review fallback), and keeps Codex for planning, review and `EASY` tasks.
+`guest-implementer` runs Gemini 4 Hydrogen (`gemini-4-hydrogen-high`) for `ROUTINE` tasks and Gemini 4 Neon (`gemini-4-neon-xhigh`) for `HARD` tasks, both through the Antigravity CLI. Hydrogen for `ROUTINE` is a choice the experiments didn't measure. Neon also lists the polish fixes, read-only: `sol`'s test audit and `simplifier`'s simplifications, in shipyard and boatyard. That puts the token-heavy implementation and listing on the Gemini plan, leaves Anthropic with orchestration and the gates (Fable, Opus judging polish, Opus as task-review fallback), and keeps Codex for planning, review and `EASY` tasks.
 
 Why these seats: on the [Artificial Analysis coding-agent index](https://artificialanalysis.ai/agents/coding-agents) (November 2026), Antigravity with Neon xhigh scores 58.6, level with Claude Fable 5.2 xhigh (58.5) and Opus 5.5 max (58.2) at the top. In the November 2026 quick pass of the [model role experiments](docs/model-role-experiments.md), Neon xhigh matched Sonnet's acceptance rate on `HARD` tasks with higher design scores, though on only two cases. As a third reviewer, Gemini caught nothing Fable and Astra missed and raised more false blockers, so the review panel has no Gemini seat. The Gemini quota is weekly and shared across models, so expect the fallbacks to run when it is spent.
 
-It needs `agy` 1.5.12 or newer, signed in either way agy supports: a Gemini subscription login, or `GEMINI_API_KEY` in the environment the lead session starts from. The wrappers don't pick a backend, so agy uses whichever sign-in you set up. If Neon is missing, out of quota or fails before producing work, `ROUTINE` tasks fall back to Terra (`gpt-6.1-terra`, high reasoning, through Codex), `HARD` tasks go to `sonnet-implementer`, and the polish listers fall back to `gpt-6.2-sol`. The wrapper stops instead of falling back if a failed Neon run left the worktree dirty.
+It needs `agy` 1.5.12 or newer, signed in either way agy supports: a Gemini subscription login, or `GEMINI_API_KEY` in the environment the lead session starts from. The wrappers don't pick a backend, so agy uses whichever sign-in you set up. If Gemini is missing, out of quota or fails before producing work, `ROUTINE` tasks fall back to Terra (`gpt-6.1-terra`, high reasoning, through Codex), `HARD` tasks go to `sonnet-implementer`, and the polish listers fall back to `gpt-6.2-sol`. The wrapper stops instead of falling back if a failed Neon run left the worktree dirty.
 
 ## Security scan
 

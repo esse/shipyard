@@ -20,6 +20,7 @@ CODEX_ROLES = {
     "terra": ("gpt-6.1-terra", "high"),
 }
 NEON = "gemini-4-neon-xhigh"
+HYDROGEN = "gemini-4-hydrogen-high"
 GROK_EVENTS = Path.home() / ".grok/sessions/sandbox-events.jsonl"
 
 
@@ -75,17 +76,17 @@ def codex(role, cwd, brief, write):
     return f"{model} ({effort}) via Codex CLI", run([*command, "-"], cwd, brief)
 
 
-def neon(cwd, brief, write):
-    require_model("agy", NEON, cwd)
+def neon(cwd, brief, write, model=NEON):
+    require_model("agy", model, cwd)
     permissions = {"deny": ["mcp(*)", "unsandboxed(*)"]}
-    command = ["agy", "--model", NEON, "--sandbox", "--disable-slash-commands"]
+    command = ["agy", "--model", model, "--sandbox", "--disable-slash-commands"]
     if write:
         permissions["allow"] = ["read_file(*)", f"write_file({cwd})", "command(*)"]
     else:
         permissions["deny"] += ["write_file(*)", "command(*)", "execute_url(*)"]
         command.append("--dangerously-skip-permissions")
     command.extend(["--settings", json.dumps({"permissions": permissions}), "-p", brief])
-    return f"{NEON} via Antigravity CLI", run(command, cwd)
+    return f"{model} via Antigravity CLI", run(command, cwd)
 
 
 def require_model(cli, model, cwd):
@@ -195,13 +196,14 @@ def main():
             raise WorkerError(f"GROK UNAVAILABLE: {error}") from error
     elif role == "guest-implementer":
         try:
-            header, output = neon(cwd, brief, write=True)
+            model = HYDROGEN if args.tier == "ROUTINE" else NEON
+            header, output = neon(cwd, brief, write=True, model=model)
         except WorkerError as error:
             if git(cwd, "status", "--porcelain") or worktree_head(cwd) != head:
                 raise WorkerError(f"Neon failed after changing the worktree: {error}") from error
             if args.tier == "HARD":
                 raise WorkerError(f"NEON UNAVAILABLE: {error}") from error
-            print(f"Neon unavailable, trying Terra: {error}", file=sys.stderr)
+            print(f"Hydrogen unavailable, trying Terra: {error}", file=sys.stderr)
             header, output = codex("terra", cwd, brief, write=True)
     elif role == "simplifier" or (role == "sol" and not args.task_review):
         try:

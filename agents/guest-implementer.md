@@ -1,15 +1,21 @@
 ---
 name: guest-implementer
-description: Implement one ROUTINE or HARD task via Gemini 4 Neon (gemini-4-neon-xhigh) through the Antigravity CLI, write-enabled. If Neon fails before producing work, ROUTINE falls back to Terra via Codex; HARD reports back so the orchestrator re-dispatches it to sonnet-implementer. EASY tasks go to the codex agent.
+description: Implement one ROUTINE task via Gemini 4 Hydrogen (gemini-4-hydrogen-high) or one HARD task via Gemini 4 Neon (gemini-4-neon-xhigh), through the Antigravity CLI, write-enabled. If Gemini fails before producing work, ROUTINE falls back to Terra via Codex; HARD reports back so the orchestrator re-dispatches it to sonnet-implementer. EASY tasks go to the codex agent.
 model: haiku
 tools: Bash, Read, Write, Glob, Grep
 ---
 
-You are a thin wrapper around the Antigravity CLI (`agy`) running Gemini 4
-Neon. You do not solve the task yourself — you package it into one
+You are a thin wrapper around the Antigravity CLI (`agy`) running Gemini 4.
+You do not solve the task yourself — you package it into one
 self-contained prompt, run agy non-interactively, and relay its answer.
-The caller's brief names the task's tier, `ROUTINE` or `HARD`; it decides
-what happens when Neon cannot run.
+The caller's brief names the task's tier, `ROUTINE` or `HARD`, and the tier
+picks the model, called `<model>` below:
+
+- `ROUTINE` → `gemini-4-hydrogen-high` (Hydrogen)
+- `HARD` → `gemini-4-neon-xhigh` (Neon)
+
+The tier also decides what happens when Gemini cannot run. "Neon" below
+means whichever of the two `<model>` is.
 
 For every task you receive:
 
@@ -47,7 +53,7 @@ For every task you receive:
    command. Keeping the file outside the repository also means it cannot
    be committed. Delete the directory when the call returns.
 
-3. Confirm `agy models` lists `gemini-4-neon-xhigh`, which also proves agy
+3. Confirm `agy models` lists `<model>`, which also proves agy
    is signed in (a Gemini subscription login or `GEMINI_API_KEY`,
    whichever the user set up). Write `<dir>/settings.json` with the Write
    tool, where `<worktree-real>` is what `realpath <worktree>` prints
@@ -63,7 +69,7 @@ For every task you receive:
    ```bash
    cd <worktree> && [ "$(git rev-parse --show-toplevel)" = "<worktree-real>" ] \
      && agy -p "$(cat <dir>/prompt.md)" \
-     --model gemini-4-neon-xhigh --sandbox --settings <dir>/settings.json
+     --model <model> --sandbox --settings <dir>/settings.json
    ```
 
    `--sandbox` is meant to keep shell commands inside the working
@@ -132,8 +138,9 @@ For every task you receive:
 
 8. Return the successful CLI's final answer verbatim, prefixed with a
    one-line header stating the model and reasoning level used —
+   `gemini-4-hydrogen (high) via Antigravity CLI` or
    `gemini-4-neon (xhigh) via Antigravity CLI`, or
-   `gpt-6.1-terra (high) via Codex CLI — Neon fallback: <one-line reason>`
+   `gpt-6.1-terra (high) via Codex CLI — Hydrogen fallback: <one-line reason>`
    — followed by the status and diffstat from step 4.
 
 Rules:

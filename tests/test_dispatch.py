@@ -20,7 +20,7 @@ from pathlib import Path
 role = Path(sys.argv[0]).name
 args = sys.argv[1:]
 if args == ["models"]:
-    print("gemini-4-neon-xhigh" if role == "agy" else "grok-4.7")
+    print("gemini-4-neon-xhigh\\ngemini-4-hydrogen-high" if role == "agy" else "grok-4.7")
     sys.exit(0)
 with open(os.environ["SHIPYARD_TEST_CALLS"], "a") as log:
     json.dump([role, str(Path.cwd()), args, sys.stdin.read()], log)
@@ -133,6 +133,7 @@ class DispatchTest(unittest.TestCase):
         neon, terra, _, sonnet = self.calls()
         self.assertTrue(all(call[1] == str(self.worktree) for call in self.calls()))
         self.assertNotIn("--dangerously-skip-permissions", neon[2])
+        self.assertIn("gemini-4-hydrogen-high", neon[2])
         self.assertIn("workspace-write", terra[2])
         self.assertIn("gpt-6.1-terra", terra[2])
         self.assertIn("Read,Glob,Grep,Edit,Write", sonnet[2])
